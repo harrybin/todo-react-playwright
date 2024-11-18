@@ -50,7 +50,8 @@ function Todo(props) {
         <button
           type="button"
           className="btn todo-cancel"
-          onClick={() => setEditing(false)}>
+          onClick={() => setEditing(false)}
+        >
           Cancel
           <span className="visually-hidden">renaming {props.name}</span>
         </button>
@@ -72,7 +73,7 @@ function Todo(props) {
           onChange={() => props.toggleTaskCompleted(props.id)}
         />
         <label className="todo-label" htmlFor={props.id}>
-          {props.name}
+          {`${props.name}  -  (${props.time})  -  [${props.location?.latitude}, ${props.location?.longitude}]`}
         </label>
       </div>
       <div className="btn-group">
@@ -82,13 +83,15 @@ function Todo(props) {
           onClick={() => {
             setEditing(true);
           }}
-          ref={editButtonRef}>
+          ref={editButtonRef}
+        >
           Edit <span className="visually-hidden">{props.name}</span>
         </button>
         <button
           type="button"
           className="btn btn__danger"
-          onClick={() => props.deleteTask(props.id)}>
+          onClick={() => props.deleteTask(props.id)}
+        >
           Delete <span className="visually-hidden">{props.name}</span>
         </button>
       </div>

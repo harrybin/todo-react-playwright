@@ -1,6 +1,7 @@
 function FilterButton(props) {
   return (
     <button
+      data-testid={`testID-${props.name}`}
       type="button"
       className="btn toggle-btn"
       aria-pressed={props.isPressed}

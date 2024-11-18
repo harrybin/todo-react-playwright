@@ -63,6 +63,8 @@ function App(props) {
         name={task.name}
         completed={task.completed}
         key={task.id}
+        time={task.time}
+        location={task.location}
         toggleTaskCompleted={toggleTaskCompleted}
         deleteTask={deleteTask}
         editTask={editTask}
@@ -79,8 +81,17 @@ function App(props) {
   ));
 
   function addTask(name) {
-    const newTask = { id: "todo-" + nanoid(), name: name, completed: false };
-    setTasks([...tasks, newTask]);
+    navigator.geolocation.getCurrentPosition((position) => {
+      const { latitude, longitude } = position.coords;
+      const newTask = {
+        id: "todo-" + nanoid(),
+        name: name,
+        time: new Date(),
+        location: { latitude, longitude },
+        completed: false,
+      };
+      setTasks([...tasks, newTask]);
+    });
   }
 
   const tasksNoun = taskList.length !== 1 ? "tasks" : "task";
@@ -96,6 +107,8 @@ function App(props) {
   }, [tasks.length, prevTaskLength]);
 
   return (
+    // TODO: add Xebia log
+    // load data from json file (fetch from server)
     <div className="todoapp stack-large">
       <h1>TodoMatic</h1>
       <Form addTask={addTask} />

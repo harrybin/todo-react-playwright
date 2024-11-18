@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 function Form(props) {
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
 
   // NOTE: As written, this function has a bug: it doesn't prevent the user
   // from submitting an empty form. This is left as an exercise for developers
@@ -33,7 +33,11 @@ function Form(props) {
         value={name}
         onChange={handleChange}
       />
-      <button type="submit" className="btn btn__primary btn__lg">
+      <button
+        type="submit"
+        id="myUniqueID"
+        className="btn btn__primary btn__lg"
+      >
         Add
       </button>
     </form>
