@@ -4,9 +4,10 @@ import FilterButton from "./components/FilterButton";
 import Todo from "./components/Todo";
 import { nanoid } from "nanoid";
 import React from "react";
+import type { Task } from "./Task";
 
-function usePrevious(value) {
-  const ref = useRef(null);
+function usePrevious(value: number) {
+  const ref = useRef<number | null>(null);
   useEffect(() => {
     ref.current = value;
   });
@@ -15,18 +16,18 @@ function usePrevious(value) {
 
 const FILTER_MAP = {
   All: () => true,
-  Active: (task) => !task.completed,
-  Completed: (task) => task.completed,
+  Active: (task: { completed: Task }) => !task.completed,
+  Completed: (task: { completed: Task }) => task.completed,
 };
 
 const FILTER_NAMES = Object.keys(FILTER_MAP);
 
-function App(props) {
-  const [tasks, setTasks] = useState(props.tasks);
+function App(props: { tasks: Task[] }) {
+  const [tasks, setTasks] = useState<Task[]>(props.tasks);
   const [filter, setFilter] = useState("All");
 
-  function toggleTaskCompleted(id) {
-    const updatedTasks = tasks.map((task) => {
+  function toggleTaskCompleted(id: string) {
+    const updatedTasks: Task[] = tasks.map((task: Task) => {
       // if this task has the same ID as the edited task
       if (id === task.id) {
         // use object spread to make a new obkect
@@ -38,27 +39,27 @@ function App(props) {
     setTasks(updatedTasks);
   }
 
-  function deleteTask(id) {
-    const remainingTasks = tasks.filter((task) => id !== task.id);
+  function deleteTask(id: string) {
+    const remainingTasks = tasks.filter((task: Task) => id !== task.id);
     setTasks(remainingTasks);
   }
 
-  function editTask(id, newName) {
-    const editedTaskList = tasks.map((task) => {
+  function editTask(id: string, newName: string) {
+    const editedTaskList = tasks.map((task: Task) => {
       // if this task has the same ID as the edited task
       if (id === task.id) {
         // Copy the task and update its name
-        return { ...task, name: newName };
+        return { ...task, name: newName } as Task;
       }
       // Return the original task if it's not the edited task
-      return task;
+      return task as Task;
     });
     setTasks(editedTaskList);
   }
 
   const taskList = tasks
     ?.filter(FILTER_MAP[filter])
-    .map((task) => (
+    .map((task: Task) => (
       <Todo
         id={task.id}
         name={task.name}
@@ -81,16 +82,16 @@ function App(props) {
     />
   ));
 
-  function addTask(name) {
+  function addTask(name: string) {
     navigator.geolocation.getCurrentPosition((position) => {
       const { latitude, longitude } = position.coords;
       const newTask = {
         id: "todo-" + nanoid(),
         name: name,
-        time: new Date(),
+        time: new Date().toISOString(),
         location: { latitude, longitude },
         completed: false,
-      };
+      } as Task;
       setTasks([...tasks, newTask]);
     });
   }
