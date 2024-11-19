@@ -3,6 +3,7 @@ import Form from "./components/Form";
 import FilterButton from "./components/FilterButton";
 import Todo from "./components/Todo";
 import { nanoid } from "nanoid";
+import React from "react";
 
 function usePrevious(value) {
   const ref = useRef(null);
@@ -97,12 +98,12 @@ function App(props) {
   const tasksNoun = taskList.length !== 1 ? "tasks" : "task";
   const headingText = `${taskList.length} ${tasksNoun} remaining`;
 
-  const listHeadingRef = useRef(null);
-  const prevTaskLength = usePrevious(tasks.length);
+  const listHeadingRef = useRef<HTMLHeadingElement>(null);
+  const prevTaskLength = usePrevious(tasks.length) ?? 0;
 
   useEffect(() => {
     if (tasks.length < prevTaskLength) {
-      listHeadingRef.current.focus();
+      listHeadingRef.current?.focus();
     }
   }, [tasks.length, prevTaskLength]);
 
@@ -113,7 +114,7 @@ function App(props) {
       <h1>TodoMatic</h1>
       <Form addTask={addTask} />
       <div className="filters btn-group stack-exception">{filterList}</div>
-      <h2 id="list-heading" tabIndex="-1" ref={listHeadingRef}>
+      <h2 id="list-heading" tabIndex={-1} ref={listHeadingRef}>
         {headingText}
       </h2>
       <ul

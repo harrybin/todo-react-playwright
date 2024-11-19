@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import React from "react";
 
-function usePrevious(value) {
-  const ref = useRef(null);
+function usePrevious<T>(value: T): T | null {
+  const ref = useRef<T | null>(null);
   useEffect(() => {
     ref.current = value;
   });
@@ -12,8 +13,8 @@ function Todo(props) {
   const [isEditing, setEditing] = useState(false);
   const [newName, setNewName] = useState("");
 
-  const editFieldRef = useRef(null);
-  const editButtonRef = useRef(null);
+  const editFieldRef = useRef<HTMLInputElement>(null);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
 
   const wasEditing = usePrevious(isEditing);
 
@@ -100,9 +101,9 @@ function Todo(props) {
 
   useEffect(() => {
     if (!wasEditing && isEditing) {
-      editFieldRef.current.focus();
+      editFieldRef.current?.focus();
     } else if (wasEditing && !isEditing) {
-      editButtonRef.current.focus();
+      editButtonRef.current?.focus();
     }
   }, [wasEditing, isEditing]);
 

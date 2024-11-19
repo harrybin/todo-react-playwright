@@ -1,4 +1,12 @@
-function FilterButton(props) {
+import React from "react";
+
+interface FilterButtonProps {
+  name: string;
+  isPressed: boolean;
+  setFilter: (name: string) => void;
+}
+
+function FilterButton(props: FilterButtonProps) {
   return (
     <button
       data-testid={`testID-${props.name}`}
