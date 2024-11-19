@@ -12,6 +12,7 @@ import {
   Stack,
   Grid2,
   Avatar,
+  Button,
 } from "@mui/material";
 import type { Task } from "./Task";
 
@@ -107,8 +108,14 @@ function App(props: { tasks: Task[] }) {
     }
   }, [tasks.length, prevTaskLength]);
 
+  const loadRemoteTasks = async () => {
+    const response = await fetch("remoteTasks.json");
+    const data = (await response.json()) as Task[];
+    setTasks(data);
+  };
+
   return (
-    <Grid2 spacing={4} margin={4}>
+    <Grid2 spacing={4} margin={4} maxWidth={800}>
       <img alt="Site Logo" src="getsitelogo.png" width="150" height="50" />
       <Stack spacing={2}>
         <Typography variant="h1">TodoMatic</Typography>
@@ -124,6 +131,9 @@ function App(props: { tasks: Task[] }) {
         >
           {headingText}
         </Typography>
+        <Button variant="contained" onClick={loadRemoteTasks}>
+          <Typography>Load remote tasks</Typography>
+        </Button>
         <List aria-labelledby="list-heading" role="list">
           {taskList}
         </List>

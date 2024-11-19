@@ -1,5 +1,5 @@
 import React from "react";
-import { Button } from "@mui/material";
+import { Button, Typography } from "@mui/material";
 
 interface FilterButtonProps {
   name: string;
@@ -16,9 +16,7 @@ function FilterButton(props: FilterButtonProps) {
       variant={props.isPressed ? "contained" : "outlined"}
       color="primary"
     >
-      <span>Show </span>
-      <span>{props.name}</span>
-      <span> tasks</span>
+      <Typography>{props.name}</Typography>
     </Button>
   );
 }

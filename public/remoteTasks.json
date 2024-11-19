@@ -1,0 +1,22 @@
+[
+  {
+    "id": "todo-Spx55m1dZZdJNv67RrdeG",
+    "name": "remote entry",
+    "time": "2024-11-19T08:50:08.792Z",
+    "location": {
+      "latitude": 49.6370665,
+      "longitude": 6.9014382
+    },
+    "completed": false
+  },
+  {
+    "id": "todo-sW6CT-LsLiX1Hbjn7wu1Q",
+    "name": "another remote value",
+    "time": "2024-11-19T08:50:20.975Z",
+    "location": {
+      "latitude": 49.6370665,
+      "longitude": 6.9014382
+    },
+    "completed": false
+  }
+]
