@@ -9,6 +9,7 @@ import {
   ListItem,
   FormControlLabel,
   Stack,
+  Paper,
 } from "@mui/material";
 import type { Task } from "../Task";
 
@@ -48,9 +49,9 @@ function Todo(props: {
   }
 
   const editingTemplate = (
-    <Box component="form" onSubmit={handleSubmit}>
-      <div>
-        <Typography variant="body1">New name for {props.task.name}</Typography>
+    <Paper>
+      <Stack component="form" onSubmit={handleSubmit} margin={2} spacing={2}>
+        <Typography variant="h5">{`New name for "${props.task.name}"`}</Typography>
         <TextField
           id={props.task.id}
           type="text"
@@ -59,68 +60,66 @@ function Todo(props: {
           inputRef={editFieldRef}
           fullWidth
         />
-      </div>
-      <div>
-        <Button
-          type="button"
-          onClick={() => setEditing(false)}
-          variant="outlined"
-          color="secondary"
-        >
-          Cancel
-          <span className="visually-hidden">renaming {props.task.name}</span>
-        </Button>
-        <Button type="submit" variant="contained" color="primary">
-          Save
-          <span className="visually-hidden">
-            new name for {props.task.name}
-          </span>
-        </Button>
-      </div>
-    </Box>
+        <Stack direction="row" spacing={2}>
+          <Button
+            type="button"
+            onClick={() => setEditing(false)}
+            variant="outlined"
+            color="secondary"
+          >
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained" color="primary">
+            Save
+          </Button>
+        </Stack>
+      </Stack>
+    </Paper>
   );
 
   const viewTemplate = (
-    <Stack spacing={2}>
-      <Box>
-        <FormControlLabel
-          control={
-            <Checkbox
-              id={props.task.id}
-              checked={props.task.completed}
-              onChange={() => props.toggleTaskCompleted(props.task)}
-            />
-          }
-          label={
-            <Box>
-              <Typography variant="h4">{props.task.name}</Typography>
-              <Typography variant="h5">{`(${props.task.time})  -  [${props.task.location?.latitude}, ${props.task.location?.longitude}]`}</Typography>
-            </Box>
-          }
-        />
-      </Box>
-      <Stack direction="row" spacing={2}>
-        <Button
-          type="button"
-          onClick={() => {
-            setEditing(true);
-          }}
-          ref={editButtonRef}
-          variant="outlined"
-          color="primary"
-        >
-          Edit <span className="visually-hidden">{props.task.name}</span>
-        </Button>
-        <Button
-          type="button"
-          onClick={() => props.deleteTask(props.task)}
-          variant="contained"
-          color="secondary"
-        >
-          Delete <span className="visually-hidden">{props.task.name}</span>
-        </Button>
+    <Paper>
+      <Stack spacing={2} margin={2}>
+        <Box>
+          <FormControlLabel
+            control={
+              <Checkbox
+                id={props.task.id}
+                checked={props.task.completed}
+                onChange={() => props.toggleTaskCompleted(props.task)}
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="h4">{props.task.name}</Typography>
+                <Typography variant="h5">{`(${props.task.time})  -  [${props.task.location?.latitude}, ${props.task.location?.longitude}]`}</Typography>
+              </Box>
+            }
+          />
+        </Box>
+        <Stack direction="row" spacing={2}>
+          <Button
+            type="button"
+            onClick={() => {
+              setEditing(true);
+            }}
+            ref={editButtonRef}
+            variant="outlined"
+            color="primary"
+          >
+            Edit
+          </Button>
+          <Button
+            type="button"
+            onClick={() => props.deleteTask(props.task)}
+            variant="contained"
+            color="secondary"
+          >
+            Delete
+          </Button>
+        </Stack>
       </Stack>
-    </Stack>
+    </Paper>
   );
 
   useEffect(() => {
