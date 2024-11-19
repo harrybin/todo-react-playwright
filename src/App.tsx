@@ -13,6 +13,7 @@ import {
   Grid2,
   Avatar,
   Button,
+  Divider,
 } from "@mui/material";
 import type { Task } from "./Task";
 
@@ -115,25 +116,28 @@ function App(props: { tasks: Task[] }) {
   };
 
   return (
-    <Grid2 spacing={4} margin={4} maxWidth={800}>
+    <Grid2 spacing={4} margin={4} maxWidth={900}>
       <img alt="Site Logo" src="getsitelogo.png" width="150" height="50" />
-      <Stack spacing={2}>
-        <Typography variant="h1">TodoMatic</Typography>
+      <Stack spacing={2} marginLeft={20}>
+        <Typography variant="h2">TodoMatic</Typography>
         <Form addTask={addTask} />
+        <Box paddingBlock={2}>
+          <Divider />
+        </Box>
+        <Button variant="contained" onClick={loadRemoteTasks}>
+          <Typography>Load remote tasks</Typography>
+        </Button>
         <Stack direction="row" spacing={2}>
           {filterList}
         </Stack>
         <Typography
-          variant="h2"
+          variant="h3"
           id="list-heading"
           tabIndex={-1}
           ref={listHeadingRef}
         >
           {headingText}
         </Typography>
-        <Button variant="contained" onClick={loadRemoteTasks}>
-          <Typography>Load remote tasks</Typography>
-        </Button>
         <List aria-labelledby="list-heading" role="list">
           {taskList}
         </List>

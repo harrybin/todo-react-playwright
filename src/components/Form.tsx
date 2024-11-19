@@ -21,7 +21,7 @@ function Form(props: FormProps) {
 
   return (
     <Stack component="form" onSubmit={handleSubmit} spacing={2}>
-      <Typography variant="h2">
+      <Typography variant="h4">
         <label htmlFor="new-todo-input">What needs to be done?</label>
       </Typography>
       <TextField
