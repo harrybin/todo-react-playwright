@@ -26,30 +26,30 @@ function App(props: { tasks: Task[] }) {
   const [tasks, setTasks] = useState<Task[]>(props.tasks);
   const [filter, setFilter] = useState("All");
 
-  function toggleTaskCompleted(id: string) {
-    const updatedTasks: Task[] = tasks.map((task: Task) => {
+  function toggleTaskCompleted(task: Task) {
+    const updatedTasks: Task[] = tasks.map((itask: Task) => {
       // if this task has the same ID as the edited task
-      if (id === task.id) {
+      if (task.id === itask.id) {
         // use object spread to make a new obkect
         // whose `completed` prop has been inverted
-        return { ...task, completed: !task.completed };
+        return { ...itask, completed: !itask.completed };
       }
       return task;
     });
     setTasks(updatedTasks);
   }
 
-  function deleteTask(id: string) {
-    const remainingTasks = tasks.filter((task: Task) => id !== task.id);
+  function deleteTask(task: Task) {
+    const remainingTasks = tasks.filter((task: Task) => task.id !== task.id);
     setTasks(remainingTasks);
   }
 
-  function editTask(id: string, newName: string) {
-    const editedTaskList = tasks.map((task: Task) => {
+  function editTask(task: Task) {
+    const editedTaskList = tasks.map((itask: Task) => {
       // if this task has the same ID as the edited task
-      if (id === task.id) {
+      if (task.id === itask.id) {
         // Copy the task and update its name
-        return { ...task, name: newName } as Task;
+        return { ...itask, name: task.name } as Task;
       }
       // Return the original task if it's not the edited task
       return task as Task;
@@ -61,12 +61,8 @@ function App(props: { tasks: Task[] }) {
     ?.filter(FILTER_MAP[filter])
     .map((task: Task) => (
       <Todo
-        id={task.id}
-        name={task.name}
-        completed={task.completed}
+        task={task}
         key={task.id}
-        time={task.time}
-        location={task.location}
         toggleTaskCompleted={toggleTaskCompleted}
         deleteTask={deleteTask}
         editTask={editTask}

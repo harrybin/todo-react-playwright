@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import React from "react";
+import type { Task } from "../Task";
 
 function usePrevious<T>(value: T): T | null {
   const ref = useRef<T | null>(null);
@@ -9,7 +10,12 @@ function usePrevious<T>(value: T): T | null {
   return ref.current;
 }
 
-function Todo(props) {
+function Todo(props: {
+  task: Task;
+  editTask: (task: Task) => void;
+  toggleTaskCompleted: (task: Task) => void;
+  deleteTask: (task: Task) => void;
+}) {
   const [isEditing, setEditing] = useState(false);
   const [newName, setNewName] = useState("");
 
@@ -18,16 +24,18 @@ function Todo(props) {
 
   const wasEditing = usePrevious(isEditing);
 
-  function handleChange(event) {
+  function handleChange(event: {
+    target: { value: React.SetStateAction<string> };
+  }) {
     setNewName(event.target.value);
   }
 
   // NOTE: As written, this function has a bug: it doesn't prevent the user
   // from submitting an empty form. This is left as an exercise for developers
   // working through MDN's React tutorial.
-  function handleSubmit(event) {
+  function handleSubmit(event: { preventDefault: () => void }) {
     event.preventDefault();
-    props.editTask(props.id, newName);
+    props.editTask(props.task);
     setNewName("");
     setEditing(false);
   }
@@ -35,11 +43,11 @@ function Todo(props) {
   const editingTemplate = (
     <form className="stack-small" onSubmit={handleSubmit}>
       <div className="form-group">
-        <label className="todo-label" htmlFor={props.id}>
-          New name for {props.name}
+        <label className="todo-label" htmlFor={props.task.id}>
+          New name for {props.task.name}
         </label>
         <input
-          id={props.id}
+          id={props.task.id}
           className="todo-text"
           type="text"
           value={newName}
@@ -54,11 +62,13 @@ function Todo(props) {
           onClick={() => setEditing(false)}
         >
           Cancel
-          <span className="visually-hidden">renaming {props.name}</span>
+          <span className="visually-hidden">renaming {props.task.name}</span>
         </button>
         <button type="submit" className="btn btn__primary todo-edit">
           Save
-          <span className="visually-hidden">new name for {props.name}</span>
+          <span className="visually-hidden">
+            new name for {props.task.name}
+          </span>
         </button>
       </div>
     </form>
@@ -68,13 +78,13 @@ function Todo(props) {
     <div className="stack-small">
       <div className="c-cb">
         <input
-          id={props.id}
+          id={props.task.id}
           type="checkbox"
-          defaultChecked={props.completed}
-          onChange={() => props.toggleTaskCompleted(props.id)}
+          defaultChecked={props.task.completed}
+          onChange={() => props.toggleTaskCompleted(props.task)}
         />
-        <label className="todo-label" htmlFor={props.id}>
-          {`${props.name}  -  (${props.time})  -  [${props.location?.latitude}, ${props.location?.longitude}]`}
+        <label className="todo-label" htmlFor={props.task.id}>
+          {`${props.task.name}  -  (${props.task.time})  -  [${props.task.location?.latitude}, ${props.task.location?.longitude}]`}
         </label>
       </div>
       <div className="btn-group">
@@ -86,14 +96,14 @@ function Todo(props) {
           }}
           ref={editButtonRef}
         >
-          Edit <span className="visually-hidden">{props.name}</span>
+          Edit <span className="visually-hidden">{props.task.name}</span>
         </button>
         <button
           type="button"
           className="btn btn__danger"
-          onClick={() => props.deleteTask(props.id)}
+          onClick={() => props.deleteTask(props.task)}
         >
-          Delete <span className="visually-hidden">{props.name}</span>
+          Delete <span className="visually-hidden">{props.task.name}</span>
         </button>
       </div>
     </div>
