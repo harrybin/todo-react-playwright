@@ -4,7 +4,8 @@ import FilterButton from "./components/FilterButton";
 import Todo from "./components/Todo";
 import { nanoid } from "nanoid";
 import React from "react";
-import type { Task } from "./Task";
+import type { Task } from "./types";
+import { Container, Typography, Box, List, Stack } from "@mui/material";
 
 function usePrevious(value: number) {
   const ref = useRef<number | null>(null);
@@ -28,10 +29,7 @@ function App(props: { tasks: Task[] }) {
 
   function toggleTaskCompleted(task: Task) {
     const updatedTasks: Task[] = tasks.map((itask: Task) => {
-      // if this task has the same ID as the edited task
       if (task.id === itask.id) {
-        // use object spread to make a new obkect
-        // whose `completed` prop has been inverted
         return { ...itask, completed: !itask.completed };
       }
       return task;
@@ -40,18 +38,15 @@ function App(props: { tasks: Task[] }) {
   }
 
   function deleteTask(task: Task) {
-    const remainingTasks = tasks.filter((task: Task) => task.id !== task.id);
+    const remainingTasks = tasks.filter((itask: Task) => itask.id !== task.id);
     setTasks(remainingTasks);
   }
 
   function editTask(task: Task) {
     const editedTaskList = tasks.map((itask: Task) => {
-      // if this task has the same ID as the edited task
       if (task.id === itask.id) {
-        // Copy the task and update its name
         return { ...itask, name: task.name } as Task;
       }
-      // Return the original task if it's not the edited task
       return task as Task;
     });
     setTasks(editedTaskList);
@@ -105,23 +100,24 @@ function App(props: { tasks: Task[] }) {
   }, [tasks.length, prevTaskLength]);
 
   return (
-    // TODO: add Xebia log
-    // load data from json file (fetch from server)
-    <div className="todoapp stack-large">
-      <h1>TodoMatic</h1>
+    <Stack spacing={2}>
+      <Typography variant="h1">TodoMatic</Typography>
       <Form addTask={addTask} />
-      <div className="filters btn-group stack-exception">{filterList}</div>
-      <h2 id="list-heading" tabIndex={-1} ref={listHeadingRef}>
-        {headingText}
-      </h2>
-      <ul
-        aria-labelledby="list-heading"
-        className="todo-list stack-large stack-exception"
-        role="list"
+      <Stack direction="row" spacing={2}>
+        {filterList}
+      </Stack>
+      <Typography
+        variant="h2"
+        id="list-heading"
+        tabIndex={-1}
+        ref={listHeadingRef}
       >
+        {headingText}
+      </Typography>
+      <List aria-labelledby="list-heading" role="list">
         {taskList}
-      </ul>
-    </div>
+      </List>
+    </Stack>
   );
 }
 

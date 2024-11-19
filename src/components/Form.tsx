@@ -1,5 +1,6 @@
 import { useState } from "react";
 import React from "react";
+import { TextField, Button, Box, Typography, Stack } from "@mui/material";
 
 interface FormProps {
   addTask: (name: string) => void;
@@ -19,30 +20,28 @@ function Form(props: FormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2 className="label-wrapper">
-        <label htmlFor="new-todo-input" className="label__lg">
-          What needs to be done?
-        </label>
-      </h2>
-
-      <input
-        type="text"
+    <Stack component="form" onSubmit={handleSubmit} spacing={2}>
+      <Typography variant="h2">
+        <label htmlFor="new-todo-input">What needs to be done?</label>
+      </Typography>
+      <TextField
         id="new-todo-input"
-        className="input input__lg"
         name="text"
         autoComplete="off"
         value={name}
         onChange={handleChange}
+        fullWidth
       />
-      <button
+      <Button
         type="submit"
         id="myUniqueID"
-        className="btn btn__primary btn__lg"
+        variant="contained"
+        color="primary"
+        fullWidth
       >
         Add
-      </button>
-    </form>
+      </Button>
+    </Stack>
   );
 }
 

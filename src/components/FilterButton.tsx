@@ -1,4 +1,5 @@
 import React from "react";
+import { Button } from "@mui/material";
 
 interface FilterButtonProps {
   name: string;
@@ -8,17 +9,17 @@ interface FilterButtonProps {
 
 function FilterButton(props: FilterButtonProps) {
   return (
-    <button
+    <Button
       data-testid={`testID-${props.name}`}
-      type="button"
-      className="btn toggle-btn"
       aria-pressed={props.isPressed}
       onClick={() => props.setFilter(props.name)}
+      variant={props.isPressed ? "contained" : "outlined"}
+      color="primary"
     >
-      <span className="visually-hidden">Show </span>
+      <span>Show </span>
       <span>{props.name}</span>
-      <span className="visually-hidden"> tasks</span>
-    </button>
+      <span> tasks</span>
+    </Button>
   );
 }
 
