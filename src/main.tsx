@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
-import "./index.css";
 import type { Task } from "./Task.ts";
 
 const DATA: Task[] = [

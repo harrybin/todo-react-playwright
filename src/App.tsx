@@ -4,8 +4,16 @@ import FilterButton from "./components/FilterButton";
 import Todo from "./components/Todo";
 import { nanoid } from "nanoid";
 import React from "react";
-import type { Task } from "./types";
-import { Container, Typography, Box, List, Stack } from "@mui/material";
+import {
+  Container,
+  Typography,
+  Box,
+  List,
+  Stack,
+  Grid2,
+  Avatar,
+} from "@mui/material";
+import type { Task } from "./Task";
 
 function usePrevious(value: number) {
   const ref = useRef<number | null>(null);
@@ -100,24 +108,27 @@ function App(props: { tasks: Task[] }) {
   }, [tasks.length, prevTaskLength]);
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="h1">TodoMatic</Typography>
-      <Form addTask={addTask} />
-      <Stack direction="row" spacing={2}>
-        {filterList}
+    <Grid2 spacing={4} margin={4}>
+      <img alt="Site Logo" src="getsitelogo.png" width="150" height="50" />
+      <Stack spacing={2}>
+        <Typography variant="h1">TodoMatic</Typography>
+        <Form addTask={addTask} />
+        <Stack direction="row" spacing={2}>
+          {filterList}
+        </Stack>
+        <Typography
+          variant="h2"
+          id="list-heading"
+          tabIndex={-1}
+          ref={listHeadingRef}
+        >
+          {headingText}
+        </Typography>
+        <List aria-labelledby="list-heading" role="list">
+          {taskList}
+        </List>
       </Stack>
-      <Typography
-        variant="h2"
-        id="list-heading"
-        tabIndex={-1}
-        ref={listHeadingRef}
-      >
-        {headingText}
-      </Typography>
-      <List aria-labelledby="list-heading" role="list">
-        {taskList}
-      </List>
-    </Stack>
+    </Grid2>
   );
 }
 
