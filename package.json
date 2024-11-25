@@ -2,7 +2,7 @@
   "name": "todo-react-playwright",
   "version": "0.3.1",
   "private": true,
-  "homepage": "http://harrybin.de/todo-react-playwright/",
+  "homepage": "http://localhost:3000/",
   "type": "module",
   "scripts": {
     "predeploy": "npm run build",
