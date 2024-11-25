@@ -22,6 +22,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -32,15 +36,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "yarn"
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
       - name: Run install
-        uses: borales/actions-yarn@v5
-        with:
-          cmd: install
+        run: npm ci
       - name: Build production bundle
-        uses: borales/actions-yarn@v5
-        with:
-          cmd: build
+        run: npm run build --if-present
 
       - name: Setup pages
         uses: actions/configure-pages@v5
