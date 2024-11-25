@@ -2,9 +2,11 @@
   "name": "todo-react-playwright",
   "version": "0.3.1",
   "private": true,
-  "homepage": "http://harrybin.de/todo-react-playwright",
+  "homepage": "http://harrybin.de/todo-react-playwright/",
   "type": "module",
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
     "dev": "vite --port 3000 --open",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
@@ -27,6 +29,7 @@
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.14",
+    "gh-pages": "^6.2.0",
     "vite": "^5.4.11"
   }
 }
