@@ -2,7 +2,7 @@
   "name": "todo-react-playwright",
   "version": "0.3.1",
   "private": true,
-  "homepage": "http://harrybin.de/todo-react-playwright/",
+  "homepage": "http://harrybin.de/todo-react-playwright",
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000 --open",
