@@ -18,7 +18,7 @@
       "type": "npm",
       "script": "test:ui",
       "problemMatcher": [],
-      "detail": "vitest web ui on port 3333, watch + coverage",
+      "detail": "run playwright UI",
       "group": {
         "kind": "test",
       }
@@ -28,7 +28,11 @@
       "type": "npm",
       "script": "test",
       "problemMatcher": [],
-      "detail": "vitest run",
+      "detail": "run playwright test",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
     },
   ]
 }
