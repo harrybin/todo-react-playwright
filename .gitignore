@@ -421,3 +421,7 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 .DS_Store
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
