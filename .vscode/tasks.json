@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  //start web app
+  "tasks": [
+    {
+      "label": "[🚀 run web app]",
+      "detail": "serve it locally with an devserver",
+      "type": "npm",
+      "script": "dev",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "[🔬 test:UI TS]",
+      "type": "npm",
+      "script": "test:ui",
+      "problemMatcher": [],
+      "detail": "vitest web ui on port 3333, watch + coverage",
+      "group": {
+        "kind": "test",
+      }
+    },
+    {
+      "label": "[🧪 test TS]",
+      "type": "npm",
+      "script": "test",
+      "problemMatcher": [],
+      "detail": "vitest run",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+  ]
+}
