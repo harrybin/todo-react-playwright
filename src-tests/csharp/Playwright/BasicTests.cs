@@ -1,4 +1,4 @@
-using Microsoft.Playwright;
+﻿using Microsoft.Playwright;
 using Microsoft.Playwright.MSTest;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 
@@ -7,14 +7,29 @@ namespace TodoMatic;
 [TestClass]
 public class Test1 : PageTest
 {
-  [TestMethod]
-  public async Task SimpleTest_AddElement()
-  {
-    IBrowser browser = await Playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+    static TestContext? _testContext;
+
+    [ClassInitialize]
+    public static void ClassSetup(TestContext context)
     {
-      Headless = false,
-      SlowMo = 5000
-    });
+        _testContext = context;
+        LocalServer.StartLocalServer();
+    }
+
+    [ClassCleanup]
+    public static void ClassCleanup()
+    {
+        LocalServer.StopLocalServer();
+    }
+
+    [TestMethod]
+    public async Task SimpleTest_AddElement()
+    {
+        IBrowser browser = await Playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+        {
+            Headless = false,
+            SlowMo = 5000
+        });
 
     IPage page = await browser.NewPageAsync(new BrowserNewPageOptions
     {
