@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "ms-playwright.playwright",
+    "antfu.vite",
+    "editorconfig.editorconfig",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "eamodio.gitlens",
+    "usernamehw.errorlens",
+    "actboy168.tasks",
+  ]
+}
