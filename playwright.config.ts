@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { AUTH_FILE } from "./src-tests/typeScript/Playwright/setup/auth";
 
 /**
  * Read environment variables from file.
@@ -34,15 +35,20 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
-    {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
-    },
-
     // {
-    //   name: "firefox",
-    //   use: { ...devices["Desktop Firefox"] },
+    //   name: "chromium",
+    //   use: { ...devices["Desktop Chrome"] },
     // },
+
+    {
+      name: "firefox",
+      use: {
+        ...devices["Desktop Firefox"],
+        // Use prepared auth state.
+        storageState: AUTH_FILE,
+      },
+      dependencies: ["setup"],
+    },
 
     // {
     //   name: "webkit",
