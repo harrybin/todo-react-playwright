@@ -10,7 +10,7 @@ import {
   Box,
   List,
   Stack,
-  Grid2,
+  Grid,
   Avatar,
   Button,
   Divider,
@@ -116,7 +116,7 @@ function App(props: { tasks: Task[] }) {
   };
 
   return (
-    <Grid2 container spacing={4} margin={4} maxWidth={900}>
+    <Grid container spacing={4} margin={4} maxWidth={900}>
       <img alt="Site Logo" src="getsitelogo.png" width="150" height="50" />
       <Stack spacing={2} marginLeft={20}>
         <Typography variant="h2">TodoMatic</Typography>
@@ -142,7 +142,7 @@ function App(props: { tasks: Task[] }) {
           {taskList}
         </List>
       </Stack>
-    </Grid2>
+    </Grid>
   );
 }
 
