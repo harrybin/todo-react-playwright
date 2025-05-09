@@ -425,3 +425,7 @@ FodyWeavers.xsd
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+# playwright
+playwright-report/
+test-results/
+
