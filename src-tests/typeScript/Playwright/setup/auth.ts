@@ -1,6 +1,6 @@
 import { expect, type Browser, type Page } from "@playwright/test";
 import "dotenv/config";
-import { BASE_URL } from "../utils/helper";
+import { BASE_URL } from "../helper";
 import { authenticator } from "otplib";
 
 export const AUTH_FILE = "playwright/.auth/user.json";

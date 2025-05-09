@@ -1,0 +1,4 @@
+// Format <globPattern>:[keyRegex]
+.env:.*_KEY,.*_TOKEN,.*_PASSWORD,.*_SECRET
+
+
