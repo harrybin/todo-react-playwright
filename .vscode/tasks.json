@@ -20,7 +20,7 @@
       "problemMatcher": [],
       "detail": "run playwright UI",
       "group": {
-        "kind": "test",
+        "kind": "test"
       }
     },
     {
@@ -33,6 +33,6 @@
         "kind": "test",
         "isDefault": true
       }
-    },
+    }
   ]
 }

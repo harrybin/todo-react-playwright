@@ -39,11 +39,14 @@ export default defineConfig({
     //   name: "chromium",
     //   use: { ...devices["Desktop Chrome"] },
     // },
-
     {
-      name: "firefox",
+      name: 'setup',
+      testMatch: 'src-tests/typeScript/Playwright/setup/general.setup.ts',
+    },
+    {
+      name: "Chome",
       use: {
-        ...devices["Desktop Firefox"],
+        ...devices["Desktop Chrome"],
         // Use prepared auth state.
         storageState: AUTH_FILE,
       },
