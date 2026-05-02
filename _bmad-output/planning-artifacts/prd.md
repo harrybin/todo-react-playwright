@@ -13,6 +13,7 @@ stepsCompleted:
   - step-08-scoping
   - step-09-functional
   - step-10-nonfunctional
+  - step-11-polish
 releaseMode: single-release
 inputDocuments: []
 documentCounts:
@@ -40,7 +41,7 @@ workflowType: 'prd'
 
 ## Executive Summary
 
-**todo-react** is positioning for enterprise customers by introducing mandatory enterprise authentication with security-first architecture. The product solves a critical challenge: enabling only authorized personnel to access resources through unambiguous permissions with platform-level enforcement. This positions todo-react as a trusted platform for enterprises where security is mandatory, not configurable.
+**todo-react** introduces mandatory enterprise authentication with security-first architecture to solve a critical enterprise challenge: enabling only authorized personnel to access resources through unambiguous permissions with platform-level enforcement. This positions todo-react as a trusted platform for enterprises where security is mandatory, not configurable.
 
 ### What Makes This Special
 
@@ -85,76 +86,29 @@ workflowType: 'prd'
 
 **Immutable audit logging:** All authentication and authorization events (successful login, failed MFA, role changes, permission grants) are logged with actor, timestamp, resource, and action. Logs are immutable and searchable by admin for security investigation.
 
-## Product Scope
+## Product Vision & Long-Term Roadmap
 
-### MVP - Minimum Viable Product (Launch)
+### MVP - Initial Launch
 
-**OIDC Authentication:**
-- OpenID Connect 1.0 protocol support
-- Standard IdP metadata integration (any OIDC-compliant IdP: Okta, Azure AD, Google Workspace, etc.)
-- Role claim mapping from IdP to todo-react application roles
-- Session lifetime and refresh token management
+The first release delivers a complete, production-ready enterprise authentication platform:
 
-**Mandatory MFA:**
-- TOTP (Time-Based One-Time Password) via authenticator apps (Google Authenticator, Authy, Microsoft Authenticator)
-- SMS fallback for MFA recovery
-- MFA enforcement at platform level — no opt-out, no admin bypass
+**OIDC Authentication:** OpenID Connect 1.0 support with automatic metadata discovery, role mapping, and session management for any OIDC-compliant IdP (Okta, Azure AD, Google Workspace, Keycloak, etc.).
 
-**Permission Model:**
-- Role-based access control (RBAC) — admin, user, read-only roles
-- Permission boundaries enforced on API layer and UI
-- No cross-tenant access — tenant isolation at database query level
+**Mandatory MFA:** TOTP-based MFA via authenticator apps with SMS fallback, enforced platform-wide with zero opt-outs or admin bypasses.
 
-**Audit & Security:**
-- Immutable auth event logging (login attempts, MFA events, role changes, access grants)
-- Admin dashboard for viewing logs and investigating suspicious activity
-- Breakglass/emergency access procedure for account recovery without bypassing security
+**Permission Model:** Role-based access control (Admin, User, Read-Only, Security Officer) with permissions enforced at the API layer and database query level.
 
-**Admin Onboarding:**
-- OIDC configuration wizard with step-by-step guidance
-- Validation tests before go-live
-- Role mapping UI for configuring IdP claims → app roles
+**Audit & Security:** Immutable authentication event logging, admin dashboard for investigation, and breakglass/emergency access procedures for account recovery without security compromise.
 
-### Growth Features (Post-MVP, Months 4-6)
+**Admin Onboarding:** Step-by-step OIDC configuration wizard with validation tests and role mapping UI for IdP claim integration.
 
-**SAML 2.0 Support:**
-- SAML 2.0 protocol for enterprises using legacy IdP systems
-- Metadata-based and manual configuration
-- Assertion encryption and signature validation
+### Growth Phase (Months 4-6)
 
-**SCIM Provisioning:**
-- System for Cross-Domain Identity Management (SCIM 2.0)
-- Automatic user and group provisioning from IdP
-- Deprovisioning on user removal from IdP
+**SAML 2.0 Support** for legacy enterprise systems | **SCIM Provisioning** for automated user management | **Advanced MFA** (WebAuthn, adaptive authentication) | **Compliance Reporting** (SOC 2 readiness, audit exports)
 
-**Advanced MFA:**
-- WebAuthn/FIDO2 hardware key support
-- Adaptive MFA (risk-based step-up authentication)
-- SMS and email MFA options beyond TOTP
+### Long-Term Vision (12+ months)
 
-**Compliance & Reporting:**
-- SOC 2 Type II readiness checklist
-- Compliance-ready audit reports (access reviews, privilege escalation events)
-- Data residency options (EU, US, custom)
-
-### Vision (Future, 12+ months)
-
-**Full IAM Platform:**
-- Just-in-Time (JIT) provisioning for on-demand user creation
-- Attribute-based access control (ABAC) for fine-grained permissions
-- Policy engine for conditional access rules (IP-based, device-based, time-based)
-- Single logout (SLO) across federated systems
-
-**Advanced Security:**
-- Zero-Trust architecture enforcement (device posture checks, network segmentation)
-- Anomaly detection and automatic session termination
-- Integration with threat intelligence feeds for suspicious activity detection
-
-**Enterprise Features:**
-- Multi-organization support (reseller/partner portals)
-- Delegated admin roles (org admin without platform admin access)
-- Tenant-specific branding for SSO login experience
-- API-first architecture for partner integrations
+**Full IAM Platform:** Just-in-Time provisioning, attribute-based access control (ABAC), conditional access policy engine, zero-trust architecture, anomaly detection, multi-organization support with delegated admin roles and tenant-specific branding.
 
 ## User Journeys
 
@@ -278,33 +232,7 @@ David no longer spends weeks assembling compliance evidence. The system provides
 - Alert/detection for suspicious patterns (failed logins, privilege escalation)
 - Audit log export and retention controls
 
----
-
-### Journey Requirements Summary
-
-**From Admin Journey:**
-- OIDC configuration wizard with guided setup
-- Validation before go-live
-- Role mapping UI with preview
-- Admin monitoring dashboard
-
-**From Employee Success Journey:**
-- Seamless OIDC redirect and session creation
-- Automatic permission assignment from IdP claims
-- Role-based data filtering (access enforced at API level)
-
-**From Employee Recovery Journey:**
-- Breakglass access for help desk
-- Simple MFA re-enrollment
-- Temporary access tokens with audit logging
-
-**From Security Officer Journey:**
-- Immutable, searchable audit logs
-- Compliance report templates
-- Admin action logging and alerting
-- Data retention and export controls
-
-## SaaS B2B Specific Requirements
+## SaaS B2B Architecture & Compliance
 
 ### Multi-Tenant Architecture
 
@@ -460,6 +388,8 @@ This single-release scope ensures todo-react launches as a **complete, security-
 Nice-to-have features (SAML, SCIM, WebAuthn) enhance the platform post-launch but do not block initial value delivery or security positioning.
 
 ## Functional Requirements
+
+Functional requirements define the complete **capability contract** for the product. Every capability listed here will be designed, architected, and built. No features not listed here will exist in the final product unless explicitly added. These requirements organize all discovered needs into eight capability areas:
 
 ### OIDC Authentication & IdP Integration
 
