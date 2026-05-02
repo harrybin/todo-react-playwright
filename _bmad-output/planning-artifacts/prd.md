@@ -9,6 +9,7 @@ stepsCompleted:
   - step-04-journeys
   - step-05-domain-skipped
   - step-06-innovation-skipped
+  - step-07-project-type
 inputDocuments: []
 documentCounts:
   briefCount: 0
@@ -298,3 +299,96 @@ David no longer spends weeks assembling compliance evidence. The system provides
 - Compliance report templates
 - Admin action logging and alerting
 - Data retention and export controls
+
+## SaaS B2B Specific Requirements
+
+### Multi-Tenant Architecture
+
+**Tenant Isolation Model:**
+Each enterprise customer is a separate logical tenant within todo-react. Tenant isolation is enforced at multiple layers:
+
+- **Database Level:** All queries include tenant scoping (WHERE tenant_id = X). No query can accidentally return data from another tenant.
+- **API Level:** Every API endpoint validates that the requesting user's tenant matches the resource's tenant before returning data.
+- **UI Level:** Users only see data belonging to their tenant. Cross-tenant access attempts are denied with no ambiguity.
+
+**Authentication Tenant Binding:**
+When an employee authenticates via OIDC, their user account is automatically associated with their employer's tenant based on domain verification or explicit admin configuration.
+
+### Permission Model & RBAC
+
+**Role-Based Access Control (RBAC):**
+- **Admin Role:** Full access to configuration, user management, audit logs, and compliance features
+- **User Role:** Standard access to assigned tasks/resources within their tenant
+- **Read-Only Role:** View-only access to tasks and data; cannot create, modify, or delete
+- **Security Officer Role:** Access to audit logs, compliance reports, and security investigations without general admin permissions
+
+**Permission Boundaries:**
+Permissions are enforced at the API layer for every request, not just the UI. A user with read-only access cannot make an API call to modify a resource, even if they somehow bypass UI restrictions.
+
+### GDPR Compliance & Data Handling
+
+**Data Minimization:**
+- Collect only identity data necessary for authentication: username, email, IdP groups/claims, MFA device associations, and authentication events
+- No unnecessary personal data collection (e.g., don't store employee phone number unless required for MFA recovery)
+
+**Data Retention Policy:**
+- **Personal Data:** Deleted immediately upon employee request (via self-service or admin)
+- **Audit Logs:** Retained for 12 months for security investigation and compliance purposes
+- **Automatic Purge:** Audit logs are automatically deleted after 12 months
+- **Immutable Records:** Audit entries cannot be modified, only archived/purged per retention policy
+
+**Data Deletion Workflows:**
+Both employee self-service and admin-initiated deletion are supported:
+- **Self-Service:** Employee requests account deletion via their user profile
+- **Admin-Initiated:** Enterprise admin can bulk offboard users and request data deletion
+- **Approval Process:** Admin receives deletion request, approves/denies, and deletion executes with full audit trail
+
+**Data Processing Agreement (DPA):**
+- Standard DPA template provided to all enterprise customers
+- Specifies that todo-react acts as a data processor
+- Outlines data retention, access controls, breach notification (72-hour SLA), and sub-processor policies
+- Signed before enterprise customer production deployment
+
+### Integration & Extensibility
+
+**OIDC Integration:**
+- Standard OpenID Connect 1.0 protocol support
+- Works with any OIDC-compliant IdP (Okta, Azure AD, Google Workspace, Keycloak, etc.)
+- Automatic metadata discovery and validation
+
+**Future Integrations (Growth Phase):**
+- SCIM 2.0 for automated user provisioning/deprovisioning
+- Webhook notifications for audit events (e.g., "failed login detected")
+- API for compliance report generation and export
+
+### Compliance & Security Posture
+
+**SOC 2 Type II Roadmap:**
+- MVP includes foundational controls: immutable audit logging, access control enforcement, session management
+- Post-launch (months 3-6): Formal security procedures, change management, incident response documentation
+- Full SOC 2 Type II audit completion by month 12
+
+**Audit Logging & Monitoring:**
+- All authentication events logged with WHO, WHAT, WHEN, WHERE, OUTCOME
+- Admin actions (configuration changes, user role assignments) logged and immutable
+- Security alerts for suspicious patterns (e.g., failed login attempts, privilege escalation attempts)
+- Audit logs searchable and exportable for compliance investigations
+
+### Implementation Considerations
+
+**Authentication Flow for Tenants:**
+1. Employee navigates to todo-react login page
+2. Optionally enters company domain or selects from list of configured IdPs
+3. Redirected to corporate IdP for OIDC authentication
+4. IdP returns authenticated user and group claims
+5. todo-react maps claims to internal roles and tenant
+6. User session created, scoped to tenant
+7. All subsequent requests include tenant context
+
+**Tenant Onboarding Workflow:**
+1. Enterprise admin signs up for todo-react
+2. Creates tenant and configures OIDC with their IdP
+3. Maps IdP groups to todo-react roles
+4. Validates configuration with test login
+5. Invites employees to use the system
+6. Employees authenticate on first login, data is automatically available
