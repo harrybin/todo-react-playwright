@@ -1,0 +1,48 @@
+installation:
+  version: 6.6.0
+  installDate: 2026-05-02T21:03:07.172Z
+  lastUpdated: 2026-05-02T21:03:07.172Z
+modules:
+  - name: core
+    version: 6.6.0
+    installDate: 2026-05-02T21:03:01.948Z
+    lastUpdated: 2026-05-02T21:03:06.968Z
+    source: built-in
+    npmPackage: null
+    repoUrl: null
+  - name: bmm
+    version: 6.6.0
+    installDate: 2026-05-02T21:03:01.278Z
+    lastUpdated: 2026-05-02T21:03:06.973Z
+    source: built-in
+    npmPackage: null
+    repoUrl: null
+  - name: bmb
+    version: v1.7.0
+    installDate: 2026-05-02T21:03:03.191Z
+    lastUpdated: 2026-05-02T21:03:07.021Z
+    source: external
+    npmPackage: bmad-builder
+    repoUrl: https://github.com/bmad-code-org/bmad-builder
+    channel: stable
+    sha: 86033fc9aeae2ca6d52c7cdb675c1f4bf17fc1c1
+  - name: cis
+    version: v0.2.0
+    installDate: 2026-05-02T21:03:03.586Z
+    lastUpdated: 2026-05-02T21:03:07.087Z
+    source: external
+    npmPackage: bmad-creative-intelligence-suite
+    repoUrl: https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite
+    channel: stable
+    sha: 14a63b893c07173b7a6cfe0fb6a9a72ba51d3cf1
+  - name: tea
+    version: v1.15.1
+    installDate: 2026-05-02T21:03:06.691Z
+    lastUpdated: 2026-05-02T21:03:07.172Z
+    source: external
+    npmPackage: bmad-method-test-architecture-enterprise
+    repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
+    channel: stable
+    sha: 7c94bdc6e3d2c8c3cad09eb0a32a42fade0e9079
+ides:
+  - github-copilot
