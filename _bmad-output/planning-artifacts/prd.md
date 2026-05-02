@@ -11,6 +11,7 @@ stepsCompleted:
   - step-06-innovation-skipped
   - step-07-project-type
   - step-08-scoping
+  - step-09-functional
 releaseMode: single-release
 inputDocuments: []
 documentCounts:
@@ -456,3 +457,82 @@ This single-release scope ensures todo-react launches as a **complete, security-
 - **Enterprise adoption:** Multi-tenancy and RBAC are table-stakes for B2B SaaS
 
 Nice-to-have features (SAML, SCIM, WebAuthn) enhance the platform post-launch but do not block initial value delivery or security positioning.
+
+## Functional Requirements
+
+### OIDC Authentication & IdP Integration
+
+- **FR1:** Admin can configure OIDC integration by providing IdP metadata URL, and the system auto-discovers endpoints and certificate information
+- **FR2:** Admin can manually configure OIDC endpoints (authorization, token, userinfo) when automatic discovery fails
+- **FR3:** System validates OIDC configuration and confirms protocol compliance before accepting configuration as active
+- **FR4:** Employee can initiate login and be redirected to configured corporate IdP for authentication
+- **FR5:** System receives authenticated user claims and group memberships from IdP via OIDC token
+- **FR6:** System maps IdP group claims to todo-react application roles (Admin, User, Read-Only, Security Officer)
+- **FR7:** System updates user role mapping on every login based on current IdP group membership
+- **FR8:** Admin can configure multiple IdPs, and employee can select IdP by company domain or dropdown on login page
+
+### Multi-Factor Authentication (MFA)
+
+- **FR9:** Employee can enroll TOTP-based MFA by scanning QR code with authenticator app (Google Authenticator, Authy, Microsoft Authenticator)
+- **FR10:** System enforces MFA on every login attempt — TOTP code must be provided and validated before session creation
+- **FR11:** Employee can provide SMS-delivered one-time code as fallback when TOTP device is unavailable
+- **FR12:** System validates TOTP codes with 30-second time window tolerance and prevents replay attacks
+- **FR13:** System tracks MFA enrollment status for each user and blocks login if MFA not enrolled
+- **FR14:** Employee can view MFA enrollment status and see registered MFA devices
+- **FR15:** Admin can manually unenroll user's MFA device and force re-enrollment on next login
+
+### Role-Based Access Control (RBAC)
+
+- **FR16:** Admin can assign application roles (Admin, User, Read-Only, Security Officer) to users
+- **FR17:** Admin role can access admin console, configuration settings, user management, and audit logs
+- **FR18:** User role can create, read, update, and delete tasks and resources they own or are assigned to
+- **FR19:** Read-Only role can view tasks and resources but cannot create, update, or delete
+- **FR20:** Security Officer role can access audit logs and compliance reports but cannot modify application settings or users
+- **FR21:** System enforces role-based permissions on every API request — no permission-denied errors should reach UI
+- **FR22:** Task/resource access is determined by: (1) resource tenant matches user tenant, (2) user role grants permission
+- **FR23:** API returns HTTP 403 (Forbidden) when user lacks permission for requested action, with reason logged but not disclosed to user
+
+### Multi-Tenant Isolation & Data Scoping
+
+- **FR24:** Employee from Tenant A cannot see, access, or modify data from Tenant B under any circumstances
+- **FR25:** System scopes all database queries with tenant_id filter — no cross-tenant data accessible without explicit override
+- **FR26:** Employee's tenant is bound to their user account based on IdP domain verification or admin assignment
+- **FR27:** Admin API endpoint that returns users list returns only users from admin's own tenant
+- **FR28:** System validates API request user's tenant against resource's tenant before returning data (prevents confused deputy attacks)
+- **FR29:** Each tenant has isolated OIDC configuration — Tenant A's IdP settings do not affect Tenant B
+
+### Admin Capabilities & Configuration
+
+- **FR30:** Admin can access step-by-step OIDC configuration wizard that guides through IdP selection, metadata configuration, and role mapping
+- **FR31:** Admin can run validation test to confirm OIDC configuration is correct before activating for employees
+- **FR32:** Admin can preview user roles and permissions that will result from current IdP claim-to-role mapping
+- **FR33:** Admin can view admin dashboard showing: current authentication status, active sessions count, failed login attempts, MFA enrollment statistics
+- **FR34:** Admin can view list of all users in tenant with current roles, last login time, and MFA enrollment status
+- **FR35:** Admin can manually create user account without OIDC, assign role, and generate temporary password for manual onboarding
+
+### Audit, Compliance & Reporting
+
+- **FR36:** System logs all authentication events: successful login, failed login (reason), MFA enrollment, MFA re-enrollment, MFA bypass, role change
+- **FR37:** Audit log entry captures: timestamp, actor (user), action, resource affected, result (success/failure), IP address/device info
+- **FR38:** Audit logs are immutable — once written, cannot be modified or deleted except by time-based automatic purge after 12 months
+- **FR39:** Security Officer can search and filter audit logs by: date range, actor, action type, result, resource
+- **FR40:** Security Officer can export audit logs as CSV or JSON for compliance investigations and audit evidence
+
+### User Session & Account Management
+
+- **FR41:** System creates user session after successful OIDC + MFA authentication with session token and refresh token
+- **FR42:** Session tokens expire after 1 hour; refresh tokens remain valid for 30 days
+- **FR43:** System maintains refresh token validity across multiple devices — employee can authenticate on laptop and mobile without re-authenticating on original device
+- **FR44:** Employee can manually log out, invalidating session and refresh tokens
+- **FR45:** Employee can request permanent account and data deletion via self-service
+- **FR46:** Admin can initiate account and data deletion for offboarded employees
+- **FR47:** Data deletion is immutable and logged — cannot be reversed, recorded in audit log with full timestamp and approver
+
+### Breakglass & Emergency Access
+
+- **FR48:** Help desk agent can generate temporary breakglass access code for user locked out of MFA
+- **FR49:** Breakglass code grants 15-minute access window without MFA requirement, used once
+- **FR50:** System logs every breakglass access use: who generated it, who used it, when, for how long
+- **FR51:** User with active breakglass access can immediately re-enroll MFA with new device
+- **FR52:** MFA re-enrollment accepts QR code scan and confirms new device in <2 minutes
+- **FR53:** Admin can see breakglass access history and usage patterns to detect abuse
