@@ -10,6 +10,8 @@ stepsCompleted:
   - step-05-domain-skipped
   - step-06-innovation-skipped
   - step-07-project-type
+  - step-08-scoping
+releaseMode: single-release
 inputDocuments: []
 documentCounts:
   briefCount: 0
@@ -392,3 +394,65 @@ Both employee self-service and admin-initiated deletion are supported:
 4. Validates configuration with test login
 5. Invites employees to use the system
 6. Employees authenticate on first login, data is automatically available
+
+## Project Scoping
+
+### Strategy & Philosophy
+
+**Approach:** Single-release launch with all core enterprise authentication capabilities
+
+**Resource Requirements:** 3–5 engineers (backend + frontend + security), 2–3 months
+
+**MVP Philosophy:** Problem-solving MVP — solves the "enterprise needs secure, mandatory MFA with OIDC" problem completely in one release, with no partial capabilities deferred to future versions
+
+### Complete Feature Set
+
+**Core User Journeys Supported:**
+1. IT Admin OIDC Configuration & Deployment — setup wizard with validation
+2. Employee SSO + MFA First Login — seamless access through identity provider and MFA device
+3. MFA Device Loss Recovery — breakglass access and re-enrollment workflows
+4. Security Officer Compliance Review — audit log access and evidence collection for SOC 2 roadmap
+
+**Must-Have Capabilities (Non-Negotiable):**
+- OIDC 1.0 integration with standard enterprise identity providers (Okta, Azure AD, Google Workspace, Keycloak, etc.)
+- Mandatory TOTP-based MFA (Google Authenticator, Authy, Microsoft Authenticator) with SMS fallback for recovery
+- Role-based access control (Admin, User, Read-Only, Security Officer roles)
+- Multi-tenant isolation enforced at database, API, and UI layers
+- Immutable audit logging with 12-month retention and automatic purge
+- Breakglass access mechanism for MFA device loss recovery
+- Admin configuration wizard with validation and test login capability
+- Personal data deletion workflows (self-service and admin-initiated)
+- Comprehensive API error handling with tenant validation to prevent data leakage
+
+**Nice-to-Have Capabilities (Post-Launch Growth):**
+- SAML 2.0 support for legacy enterprise systems
+- SCIM provisioning for automated bulk user management
+- WebAuthn/passkey authentication for modern passwordless access
+- Adaptive MFA policies for advanced threat response
+- Security Officer compliance dashboard with report generation and export
+- Formal SOC 2 Type II audit completion (roadmap target: month 12)
+
+### Risk Mitigation Strategy
+
+**Technical Risks:**
+- *OIDC implementation complexity:* Use battle-tested libraries and reference implementations; budget external security review if team lacks IdP integration experience
+- *MFA delivery reliability:* Implement dual SMS provider strategy with automatic failover; comprehensive testing for SMS delivery edge cases
+- *Multi-tenant data isolation bugs:* Invest heavily in boundary testing; each user journey must validate that data from other tenants is inaccessible
+
+**Market Risks:**
+- *Early adopter hesitation on mandatory MFA:* Position as differentiator ("we've removed the security compromise"); offer trial period for validation; provide admin override capability during initial setup
+- *Compliance concerns delaying sales:* Publish SOC 2 roadmap and timeline upfront; provide interim DPA; share GDPR compliance checklist with prospects
+
+**Resource Risks:**
+- *If team < 3 engineers:* Consider deferring WebAuthn and advanced MFA policies to post-launch; focus on OIDC + TOTP + SMS + RBAC core
+- *If limited security expertise:* Budget for external OIDC/MFA architecture review and penetration testing
+
+### Scope Justification
+
+This single-release scope ensures todo-react launches as a **complete, security-first enterprise authentication platform** rather than a feature-limited MVP. Every must-have capability is essential for:
+- **Admin success:** OIDC setup, validation, and role mapping are non-negotiable for configuration without errors
+- **Security positioning:** Mandatory MFA with no opt-out is the core differentiator
+- **Compliance credibility:** Audit logging and GDPR workflows prove security and legal readiness
+- **Enterprise adoption:** Multi-tenancy and RBAC are table-stakes for B2B SaaS
+
+Nice-to-have features (SAML, SCIM, WebAuthn) enhance the platform post-launch but do not block initial value delivery or security positioning.
