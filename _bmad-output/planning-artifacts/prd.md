@@ -12,6 +12,7 @@ stepsCompleted:
   - step-07-project-type
   - step-08-scoping
   - step-09-functional
+  - step-10-nonfunctional
 releaseMode: single-release
 inputDocuments: []
 documentCounts:
@@ -536,3 +537,55 @@ Nice-to-have features (SAML, SCIM, WebAuthn) enhance the platform post-launch bu
 - **FR51:** User with active breakglass access can immediately re-enroll MFA with new device
 - **FR52:** MFA re-enrollment accepts QR code scan and confirms new device in <2 minutes
 - **FR53:** Admin can see breakglass access history and usage patterns to detect abuse
+
+## Non-Functional Requirements
+
+### Performance
+
+- **NFR1:** OIDC authentication flow (login page → IdP → token validation → session creation) completes in <3 seconds for end-user perception
+- **NFR2:** MFA code validation (submit TOTP code → validation → session update) completes in <500ms
+- **NFR3:** Audit log search across 12 months of data returns results in <2 seconds for queries filtering by actor or action type
+- **NFR4:** Admin dashboard loads and displays real-time statistics (active sessions, failed login count) in <1 second
+- **NFR5:** API endpoints for task CRUD operations respond within 200ms (p95) under normal load
+
+### Security
+
+- **NFR6:** All authentication tokens (access, refresh, breakglass) are cryptographically signed with RS256 or stronger
+- **NFR7:** Session tokens are stored in secure HTTP-only cookies with Secure flag; no access token in localStorage
+- **NFR8:** All API communication uses HTTPS with TLS 1.2 or higher; no cleartext authentication data
+- **NFR9:** TOTP/SMS secrets for MFA are encrypted at rest using AES-256; encryption keys managed via secure key management system
+- **NFR10:** OIDC metadata endpoints are cached with signature verification; Man-in-the-Middle attacks on metadata discovery are prevented
+- **NFR11:** Failed login attempts are rate-limited: max 5 failed attempts per user per 15 minutes, triggering temporary account lockout
+- **NFR12:** Audit logs are cryptographically signed (HMAC-SHA256) to prevent tampering; any modification is detectable
+- **NFR13:** Password reset flows use secure token mechanism (one-time use, 15-minute expiry, HTTPS only)
+- **NFR14:** API endpoints validate tenant ownership for every request; no confused deputy attacks possible
+- **NFR15:** Secrets (OIDC client secrets, SMS API keys, encryption keys) are stored in secure vault (not in code or config files)
+
+### Scalability
+
+- **NFR16:** System supports up to 10,000 concurrent MFA validations per second without exceeding 500ms latency (p95)
+- **NFR17:** Database queries for tenant data retrieval scale linearly with tenant size; <100ms query time for 100K user tenants
+- **NFR18:** Multi-tenant isolation enforced without requiring separate infrastructure per tenant; all tenants share database with tenant_id scoping
+- **NFR19:** Authentication can scale from 10 users (small startup) to 100,000 users (large enterprise) without architectural changes
+- **NFR20:** SMS MFA provider can scale to handle 50,000 SMS deliveries per day; automatic failover to backup provider if primary exceeds 90% capacity
+
+### Reliability
+
+- **NFR21:** Authentication service maintains >99.5% uptime (≤3.6 hours downtime per month) including planned maintenance
+- **NFR22:** MFA SMS delivery succeeds within 2 minutes with 99% reliability; failed SMS triggers automatic retry with alternate provider
+- **NFR23:** OIDC token endpoint handles temporary IdP outages gracefully; user session is not lost if IdP becomes temporarily unavailable during validation
+- **NFR24:** Audit log writes are guaranteed (no silent failures); system returns HTTP 500 if audit log cannot be persisted
+- **NFR25:** Database backups are taken hourly; Recovery Point Objective (RPO) ≤1 hour; Recovery Time Objective (RTO) ≤4 hours
+- **NFR26:** Disaster recovery plan documents complete system restoration from backup; tested quarterly
+
+### Accessibility
+
+- **NFR27:** Admin console UI conforms to WCAG 2.1 Level AA standards; all interactive elements keyboard-accessible
+- **NFR28:** MFA re-enrollment QR code includes text backup code option for users unable to scan QR code
+- **NFR29:** Audit log dashboard supports screen reader navigation; data table rows are properly marked with ARIA labels
+
+### Integration
+
+- **NFR30:** OIDC integration with any OIDC 1.0-compliant IdP succeeds with <2 hours configuration time and zero code changes
+- **NFR31:** IdP metadata updates (certificate rotation, endpoint changes) are detected and cached within 1 hour automatically
+- **NFR32:** SMS MFA provider integration supports dual provider failover; automatic switch on 30-second timeout
