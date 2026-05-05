@@ -7,11 +7,17 @@
 
 [↑ Zurück zum Index](index.md)
 
+<details><summary><strong>## Request 1</strong> • Prompt: /bmad-create-prd erweitere die app um ein Authentifizierungssystem für Enterprise-Kunden</summary>
+
 ### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
 
 ```
 /bmad-create-prd erweitere die app um ein Authentifizierungssystem für Enterprise-Kunden
 ```
+
+</div>
 
 ### Assistant
 
@@ -21,11 +27,19 @@ Ich starte jetzt strikt den PRD-Workflow aus der Skill-Datei: zuerst löse ich d
 
 [Tool] Reading [](file:///d%3A/harrybin/todo-react-playwright/.agents/skills/bmad-create-prd)
 
+</details>
+
+<details><summary><strong>## Request 2</strong> • Prompt: c</summary>
+
 ### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
 
 ```
 c
 ```
+
+</div>
 
 ### Assistant
 
@@ -33,11 +47,19 @@ Proceeding with your Continue selection now: I will load the full Step 2 instruc
 
 [Tool] Reading skill `bmad-create-prd`: [](file:///d%3A/harrybin/todo-react-playwright/.agents/skills/bmad-create-prd/steps-c/step-02-discovery.md)
 
+</details>
+
+<details><summary><strong>## Request 3</strong> • Prompt: p</summary>
+
 ### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
 
 ```
 p
 ```
+
+</div>
 
 ### Assistant
 
@@ -69,11 +91,19 @@ I have the roster and context; next I’m running a focused three-agent roundtab
 
 [Tool] runSubagent
 
+</details>
+
+<details><summary><strong>## Request 4</strong> • Prompt: p</summary>
+
 ### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
 
 ```
 p
 ```
+
+</div>
 
 ### Assistant
 
@@ -158,15 +188,23 @@ Mostly correct classification; domain should be sharpened and complexity stays H
 **Do you accept this updated Party Mode refinement?**
 
 **Select:**
-[A] Advanced Elicitation  
-[P] Party Mode again  
-[C] Continue to Product Vision (Step 2b of 13)
+- [A] Advanced Elicitation
+- [P] Party Mode again
+- [C] Continue to Product Vision (Step 2b of 13)
+
+</details>
+
+<details><summary><strong>## Request 5</strong> • Prompt: a</summary>
 
 ### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
 
 ```
 a
 ```
+
+</div>
 
 ### Assistant
 
@@ -184,9 +222,19 @@ I’m loading the elicitation method registry next so I can present the required
 
 [Tool] Reading skill `bmad-advanced-elicitation`: [](file:///d%3A/harrybin/todo-react-playwright/.agents/skills/bmad-advanced-elicitation/methods.csv)
 
+</details>
+
+<details><summary><strong>## Request 6</strong> • Prompt: 1</summary>
+
 ### 👤 User Input
 
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 1
+```
+
+</div>
 
 ### Assistant
 
@@ -215,21 +263,42 @@ Proposed classification text to carry forward:
 - Complexity: High  
 - Project Context: Brownfield
 
-**Apply these changes to the current Step 2 classification? (`y`/`n`/other)**
+**Apply these changes to the current Step 2 classification? (`y`/
+`/other)**
 
-### User
+</details>
 
+<details><summary><strong>## Request 7</strong> • Prompt: y</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 y
+```
+
+</div>
 
 ### Assistant
 
 Applying the refined classification to frontmatter and marking Step 2 complete, then loading Step 2b (Product
 
-### User
+</details>
 
+<details><summary><strong>## Request 8</strong> • Prompt: 1. best security, like forced MFA / 2. security first / 3. permission</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 1. best security, like forced MFA
 2. security first
 3. permission
+```
+
+</div>
 
 ### Assistant
 
@@ -246,9 +315,19 @@ Excellent — that's clear and purposeful. Let me validate what I'm hearing:
 
 Once you confirm, I'll move to the next step where we draft the Executive Summary that will articulate this vision clearly in the
 
-### User
+</details>
 
+<details><summary><strong>## Request 9</strong> • Prompt: y</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 y
+```
+
+</div>
 
 ### Assistant
 
@@ -265,9 +344,7 @@ Vision confirmed and saved. Updating frontmatter and loading Step 2c (Executive 
 I've synthesized the context from steps 2 and 2b. Now drafting the Executive Summary based on your security-first vision and enterprise authentication focus.
 
 Here's the Executive Summary I've drafted for your PRD:
-
 ---
-
 ## Executive Summary
 
 **todo-react** is extending its functionality to serve enterprise customers by introducing mandatory enterprise authentication with security-first architecture. The product solves the permission management and access control challenge: ensuring only authorized personnel access resources with zero ambiguity and no technical escape routes. This positions todo-react as a trusted platform for enterprises where security is non-negotiable, not optional.
@@ -286,32 +363,50 @@ Here's the Executive Summary I've drafted for your PRD:
 | **Domain** | Workforce Identity & Access Management |
 | **Complexity** | High |
 | **Project Context** | Brownfield (extending existing todo-react app) |
-
 ---
-
 Please review this draft. Would you like me to:
-- Refine the language or emphasis in any section?
-- Add or remove details?
-- Reshape the framing?
+- **Refine the language or emphasis in any section?**
+- **Add or remove details?**
+- **Reshape the framing?**
 
 Once you're satisfied, I'll append this to the PRD and move to Success Criteria (the next section).
 
 Select an option:
-[A] Advanced Elicitation
-[P] Party Mode
-[C] Continue to Success Criteria (Step 3 of 13)
+- [A] Advanced Elicitation
+- [P] Party Mode
+- [C] Continue to Success Criteria (Step 3 of 13)
 
-### User
+</details>
 
+<details><summary><strong>## Request 10</strong> • Prompt: p</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 p
+```
+
+</div>
 
 ### Assistant
 
 (keine sichtbare Assistant-Antwort gespeichert)
 
-### User
+</details>
 
+<details><summary><strong>## Request 11</strong> • Prompt: c</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 c
+```
+
+</div>
 
 ### Assistant
 
@@ -342,28 +437,38 @@ Since you don't have existing product briefs or research documents, let me help 
 Let me ask some discovery questions to understand your success vision:
 
 **User Success (the end-users and admins):**
-**1. When an enterprise IT admin sets up this authentication system, what's the moment they realize "this is worth it"?**
-**2. For end-users (employees logging in), what would make them feel this security is worth the MFA friction?**
-**3. What's the completion scenario? "We've succeeded when..."**
+1. When an enterprise IT admin sets up this authentication system, what's the moment they realize "this is worth it"?
+2. For end-users (employees logging in), what would make them feel this security is worth the MFA friction?
+3. What's the completion scenario? "We've succeeded when..."
 
 **Business Success:**
-**1. What does success look like at 3 months? 6 months? 12 months?**
-**2. Is this measured by enterprise customer adoption, revenue, number of orgs using it, reduction in support tickets, or something else?**
-**3. What specific metric tells you "this is working"?**
+1. What does success look like at 3 months? 6 months? 12 months?
+2. Is this measured by enterprise customer adoption, revenue, number of orgs using it, reduction in support tickets, or something else?
+3. What specific metric tells you "this is working"?
 
 **Technical Success:**
-**1. Beyond "it works," what does technical success look like? (e.g., 99.9% uptime, sub-100ms login latency, audit log completeness, SAML/OIDC spec compliance?)**
+1. Beyond "it works," what does technical success look like? (e.g., 99.9% uptime, sub-100ms login latency, audit log completeness, SAML/OIDC spec compliance?)
 
 **Scope Reality Check:**
-**1. What's the MVP (minimum to prove this works)? Must have Okta + MFA? Just OIDC?**
-**2. What comes after MVP? (Growth features like SCIM provisioning, policy engine, etc.)**
-**3. What's the dream version 2-3 years out?**
+1. What's the MVP (minimum to prove this works)? Must have Okta + MFA? Just OIDC?
+2. What comes after MVP? (Growth features like SCIM provisioning, policy engine, etc.)
+3. What's the dream version 2-3 years out?
 
 Start with what feels most clear to you, and I'll help us build measurable success criteria around it.
 
-### User
+</details>
 
+<details><summary><strong>## Request 12</strong> • Prompt: 1</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 1
+```
+
+</div>
 
 ### Assistant
 
@@ -371,36 +476,46 @@ Let's focus on **User Success** first. Help me understand what winning looks lik
 
 **For IT Admins setting up enterprise authentication:**
 
-**1. What's the friction they experience today with other SSO/IAM solutions that you want to eliminate?**
-   - Is it complex setup? Ongoing configuration overhead? Hidden security gaps?
+1. What's the friction they experience today with other SSO/IAM solutions that you want to eliminate?
+   - **Is it complex setup? Ongoing configuration overhead? Hidden security gaps?**
 
-**2. When they successfully configure this in todo-react, what's the relief moment?**
-   - "I set it up once and it just works"?
-   - "I can finally sleep knowing security is enforced"?
-   - "I don't have to babysit permission configurations"?
+2. When they successfully configure this in todo-react, what's the relief moment?
+   - **"I set it up once and it just works"?**
+   - **"I can finally sleep knowing security is enforced"?**
+   - **"I don't have to babysit permission configurations"?**
 
 **For end-users (employees) logging in:**
 
-**3. How do they currently authenticate, and what changes?**
-   - Today: password? Social login?
-   - After: forced through corporate SSO + MFA?
+3. How do they currently authenticate, and what changes?
+   - **Today: password? Social login?**
+   - **After: forced through corporate SSO + MFA?**
 
-**4. What would make them feel the MFA friction is worth it?**
-   - Do they need to see security in action (login audit trails, "suspicious login blocked")?
-   - Or is it enough that their IT admin says "this is secure"?
+4. What would make them feel the MFA friction is worth it?
+   - **Do they need to see security in action (login audit trails, "suspicious login blocked")?**
+   - **Or is it enough that their IT admin says "this is secure"?**
 
 **Completion scenario:**
 
 5. Finish this sentence: "We've succeeded in user success when..."
    - Is it a percentage adoption target? (90% of enterprise users completing login within 2 weeks of rollout?)
-   - Is it zero failed MFA attempts due to poor UX?
-   - Is it admin saying "this took 2 hours to set up instead of the usual 2 days"?
+   - **Is it zero failed MFA attempts due to poor UX?**
+   - **Is it admin saying "this took 2 hours to set up instead of the usual 2 days"?**
 
 **Pick one or two of these to start with — what feels most important to you?**
 
-### User
+</details>
 
+<details><summary><strong>## Request 13</strong> • Prompt: 5</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 5
+```
+
+</div>
 
 ### Assistant
 
@@ -410,12 +525,12 @@ Perfect — let's ground this in concrete, measurable outcomes.
 
 Help me get specific:
 
-**1. Adoption speed: When you say "users complete [action] within [timeframe]," what does that look like?**
-   - Is it: "90% of enterprise employees have successfully authenticated via SSO within 2 weeks of rollout"?
-   - Or: "100% of users can log in on day 1 without hitting MFA friction"?
-   - Or something else about adoption velocity?
+1. Adoption speed: When you say "users complete [action] within [timeframe]," what does that look like?
+   - **Is it: "90% of enterprise employees have successfully authenticated via SSO within 2 weeks of rollout"?**
+   - **Or: "100% of users can log in on day 1 without hitting MFA friction"?**
+   - **Or something else about adoption velocity?**
 
-**2. Admin setup experience: From the IT admin perspective, what's the success metric?**
+2. Admin setup experience: From the IT admin perspective, what's the success metric?
    - Is it time-based? ("Admin configures Okta + todo-react auth in under 1 hour"?)
    - Is it error rate? ("Zero misconfiguration errors in the initial setup"?)
    - Is it support burden? ("Post-setup, admins have zero auth-related support tickets"?)
@@ -426,22 +541,42 @@ Help me get specific:
    - Behavior? ("Employees don't disable MFA or circumvent the system"?)
 
 4. **Security outcome:** Is there a user-facing security success metric, like:
-   - "Zero unauthorized access attempts get through"?
-   - "All admin privilege escalations are logged and visible to security teams"?
+   - **"Zero unauthorized access attempts get through"?**
+   - **"All admin privilege escalations are logged and visible to security teams"?**
 
 **Which of these resonates most, or should I ask differently to get at what you're really optimizing for?**
 
-### User
+</details>
 
+<details><summary><strong>## Request 14</strong> • Prompt: 3</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 3
+```
+
+</div>
 
 ### Assistant
 
 (keine sichtbare Assistant-Antwort gespeichert)
 
-### User
+</details>
 
+<details><summary><strong>## Request 15</strong> • Prompt: 5</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 5
+```
+
+</div>
 
 ### Assistant
 
@@ -457,32 +592,42 @@ Now let's layer in **Admin Setup Success:**
 **When the IT admin configures enterprise authentication for todo-react, what does their success look like?**
 
 1. **Setup Time:** 
-   - Should it take <1 hour total?
-   - Or are you comfortable with 2-4 hours if it's clear and guided?
+   - **Should it take <1 hour total?**
+   - **Or are you comfortable with 2-4 hours if it's clear and guided?**
 
 2. **Configuration Correctness:**
-   - "Admin completes setup with zero errors on first attempt"?
-   - Or is one iteration acceptable?
+   - **"Admin completes setup with zero errors on first attempt"?**
+   - **Or is one iteration acceptable?**
 
 3. **Ongoing Burden:**
-   - "After setup, admin spends <2 hours/month managing auth"?
-   - Or should it be <30 minutes/month?
+   - **"After setup, admin spends <2 hours/month managing auth"?**
+   - **Or should it be <30 minutes/month?**
 
 4. **Support:**
-   - "Zero auth-related support tickets from that customer post-launch"?
-   - Or is <5 tickets/month acceptable?
+   - **"Zero auth-related support tickets from that customer post-launch"?**
+   - **Or is <5 tickets/month acceptable?**
 
 5. **Feature Coverage:**
-   - Which auth protocols/features are non-negotiable for admin success?
-     - OIDC? SAML? Both?
-     - Role mapping? Just login?
-     - Audit logging? Break-glass access?
+   - **Which auth protocols/features are non-negotiable for admin success?**
+     - **OIDC? SAML? Both?**
+     - **Role mapping? Just login?**
+     - **Audit logging? Break-glass access?**
 
 Pick one or two here, and then we'll round out with **Business Success** (adoption timeline, enterprise customer acquisition, etc.).
 
-### User
+</details>
 
+<details><summary><strong>## Request 16</strong> • Prompt: 2</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 2
+```
+
+</div>
 
 ### Assistant
 
@@ -495,44 +640,64 @@ This means:
 
 Let me dig into what "zero errors" means specifically:
 
-**1. What counts as an error?**
-   - Protocol misconfiguration (OIDC/SAML metadata wrong)?
-   - Certificate/key format issues?
-   - Role mapping mistakes?
-   - All of the above?
+1. What counts as an error?
+   - **Protocol misconfiguration (OIDC/SAML metadata wrong)?**
+   - **Certificate/key format issues?**
+   - **Role mapping mistakes?**
+   - **All of the above?**
 
-**2. How do we measure "zero errors"?**
-   - Admin runs a validation test and it passes immediately?
-   - First employee login succeeds on first attempt?
-   - Employees don't hit auth failures for 7 days post-launch?
+2. How do we measure "zero errors"?
+   - **Admin runs a validation test and it passes immediately?**
+   - **First employee login succeeds on first attempt?**
+   - **Employees don't hit auth failures for 7 days post-launch?**
 
-**3. Which auth protocols must work perfectly?**
-   - OIDC only? SAML only? Both?
-   - Any specific IdP (Okta, Azure AD, others)?
+3. Which auth protocols must work perfectly?
+   - **OIDC only? SAML only? Both?**
+   - **Any specific IdP (Okta, Azure AD, others)?**
 
-**4. What about the learning curve?**
-   - Is "zero errors on first attempt" realistic, or should it be "one iteration to full correctness"?
+4. What about the learning curve?
+   - **Is "zero errors on first attempt" realistic, or should it be "one iteration to full correctness"?**
    - (E.g., admin tries once, gets feedback, fixes one thing, then succeeds?)
 
 5. **Scope:** Does "setup" include:
-   - Just connecting IdP + MFA?
-   - Or also role mapping, audit log configuration, breakglass access setup?
+   - **Just connecting IdP + MFA?**
+   - **Or also role mapping, audit log configuration, breakglass access setup?**
 
 Once we nail this, we'll have **Employee MFA success** + **Admin Setup success**, and then we can finish with **Business Success** metrics (revenue, customer acquisition, adoption timeline).
 
 **What feels right?**
 
-### User
+</details>
 
+<details><summary><strong>## Request 17</strong> • Prompt: 3</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 3
+```
+
+</div>
 
 ### Assistant
 
 Perfect — protocol choice is foundational and affects your entire MVP
 
-### User
+</details>
 
+<details><summary><strong>## Request 18</strong> • Prompt: yes</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 yes
+```
+
+</div>
 
 ### Assistant
 
@@ -543,31 +708,41 @@ Now let's round out with **Business Success** metrics:
 **When you look at this enterprise authentication initiative from a business perspective, what does winning look like?**
 
 1. **Customer Acquisition:**
-   - How many enterprise customers should be using this by month 3? Month 6? Month 12?
-   - Or is it: "X% of enterprise trials successfully deploy auth"?
+   - **How many enterprise customers should be using this by month 3? Month 6? Month 12?**
+   - **Or is it: "X% of enterprise trials successfully deploy auth"?**
 
 2. **Revenue Impact:**
-   - Does this unlock new pricing tiers (enterprise tier with MFA)?
-   - Is success measured by new ARR from this feature?
-   - Or is it a retention feature (prevents churn of existing customers)?
+   - **Does this unlock new pricing tiers (enterprise tier with MFA)?**
+   - **Is success measured by new ARR from this feature?**
+   - **Or is it a retention feature (prevents churn of existing customers)?**
 
 3. **Time-to-Value:**
-   - "Enterprise customer signs, deploys auth, and goes live within 2 weeks"?
-   - Or "First employee login with MFA within 48 hours of contract signing"?
+   - **"Enterprise customer signs, deploys auth, and goes live within 2 weeks"?**
+   - **Or "First employee login with MFA within 48 hours of contract signing"?**
 
 4. **Support/Operational:**
-   - "Zero escalations to engineering for auth issues"?
-   - Or "Support can resolve 95% of auth questions without engineering"?
+   - **"Zero escalations to engineering for auth issues"?**
+   - **Or "Support can resolve 95% of auth questions without engineering"?**
 
 5. **Market Position:**
-   - Is success about being "first in market with secure todo+auth"?
-   - Or "top 3 secure task management tools for enterprises"?
+   - **Is success about being "first in market with secure todo+auth"?**
+   - **Or "top 3 secure task management tools for enterprises"?**
 
 Pick 1-2 that matter most, and then I'll synthesize everything into a cohesive Success Criteria section with User Success, Admin Success, Business Success, and we'll define MVP/Growth/Vision scope.
 
-### User
+</details>
 
+<details><summary><strong>## Request 19</strong> • Prompt: 4</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 4
+```
+
+</div>
 
 ### Assistant
 
@@ -580,30 +755,38 @@ This tells me:
 
 Quick clarification to finalize this:
 
-**1. What counts as an auth question?**
-   - "I can't log in" → support handles?
-   - "I lost my MFA device" → support handles with breakglass?
-   - "OIDC metadata validation failed" → support or engineering?
+1. What counts as an auth question?
+   - **"I can't log in" → support handles?**
+   - **"I lost my MFA device" → support handles with breakglass?**
+   - **"OIDC metadata validation failed" → support or engineering?**
 
-**2. Timeframe: Is this metric tracked from day 1 launch, or after a 30-day stabilization period?**
+2. Timeframe: Is this metric tracked from day 1 launch, or after a 30-day stabilization period?
 
-**3. Any other business success metrics worth mentioning?**
+3. Any other business success metrics worth mentioning?
    - Timeline to first enterprise deployment? (e.g., "First customer goes live within 4 weeks of launch")
    - Number of enterprise customers? (e.g., "3+ paying enterprise customers by month 6")
-   - Or is support efficiency your primary business win?
+   - **Or is support efficiency your primary business win?**
 
 Once
 
-### User
+</details>
 
+<details><summary><strong>## Request 20</strong> • Prompt: yes</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 yes
+```
+
+</div>
 
 ### Assistant
 
 Perfect. I have all the success criteria we need. Let me draft the complete Success Criteria section for your PRD:
-
 ---
-
 ## Success Criteria
 
 ### User Success
@@ -631,9 +814,7 @@ Perfect. I have all the success criteria we need. Let me draft the complete Succ
 **MFA reliability:** >99.5% uptime for MFA authentication service. Zero silent failures or lockouts due to MFA backend issues.
 
 **Immutable audit logging:** All authentication and authorization events (successful login, failed MFA, role changes, permission grants) are logged with actor, timestamp, resource, and action. Logs are immutable and searchable by admin for security investigation.
-
 ---
-
 ## Product Scope
 
 ### MVP - Minimum Viable Product (Launch)
@@ -704,39 +885,55 @@ Perfect. I have all the success criteria we need. Let me draft the complete Succ
 - Delegated admin roles (org admin without platform admin access)
 - Tenant-specific branding for SSO login experience
 - API-first architecture for partner integrations
-
 ---
-
 Here's what I've drafted based on our discovery. Please review and let me know:
-- Any changes to the success metrics?
-- Does the MVP scope feel right, or should anything shift to Growth?
-- Should I expand or contract any section?
+- **Any changes to the success metrics?**
+- **Does the MVP scope feel right, or should anything shift to Growth?**
+- **Should I expand or contract any section?**
 
 Once you're satisfied, I'll append this to the PRD.
 
 Select an option:
-[A] Advanced Elicitation
-[P] Party Mode
-[C] Continue to User Journey Mapping (Step 4 of 13)
+- [A] Advanced Elicitation
+- [P] Party Mode
+- [C] Continue to User Journey Mapping (Step 4 of 13)
 
-### User
+</details>
 
+<details><summary><strong>## Request 21</strong> • Prompt: c</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 c
+```
+
+</div>
 
 ### Assistant
 
 (keine sichtbare Assistant-Antwort gespeichert)
 
-### User
+</details>
 
+<details><summary><strong>## Request 22</strong> • Prompt: y</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 y
+```
+
+</div>
 
 ### Assistant
 
 Perfect. Now let me craft rich narrative journeys for each user type. These will tell the story of how each person experiences the system:
-
 ---
-
 ## User Journeys
 
 ### Journey 1: IT Admin - OIDC Setup and First Day Operations
@@ -763,9 +960,7 @@ By mid-afternoon, Sarah has configured OIDC, validated it with a test login, and
 - Role mapping UI with permission preview
 - Validation test before go-live
 - Admin dashboard for monitoring live authentication
-
 ---
-
 ### Journey 2: Employee - First Login and Regular Usage
 
 **Persona: Marcus, Software Engineer**
@@ -781,25 +976,55 @@ He's redirected back to todo-react. His session is created, and he's logged in. 
 **Climax:**
 Marcus opens his task list. All his existing todo-react data is still there, mapped to his corporate email. His permissions are automatically set based on his Okta group membership. He never sees a permission denied error because the system only shows him tasks he has access to. He can assign tasks to teammates, knowing that access control is enforced, not
 
-### User
+</details>
 
+<details><summary><strong>## Request 23</strong> • Prompt: p</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 p
+```
+
+</div>
 
 ### Assistant
 
 (keine sichtbare Assistant-Antwort gespeichert)
 
-### User
+</details>
 
+<details><summary><strong>## Request 24</strong> • Prompt: p</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 p
+```
+
+</div>
 
 ### Assistant
 
 Running Party Mode now to get collaborative feedback on the user journeys from product, UX, security, and technical architecture perspectives:
 
-### User
+</details>
 
+<details><summary><strong>## Request 25</strong> • Prompt: c</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 c
+```
+
+</div>
 
 ### Assistant
 
@@ -809,9 +1034,19 @@ Appending User Journeys to the PRD, updating frontmatter, and loading Step 5 (Do
 
 [Tool] Reading [](file:///d%3A/harrybin/todo-react-playwright/_bmad-output/planning-artifacts/prd.md#150-150), lines 150 to 150
 
-### User
+</details>
 
+<details><summary><strong>## Request 26</strong> • Prompt: c</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 c
+```
+
+</div>
 
 ### Assistant
 
@@ -823,9 +1058,19 @@ Skipping Domain-Specific Requirements and updating frontmatter, then loading Ste
 
 ```
 
-### User
+</details>
 
+<details><summary><strong>## Request 27</strong> • Prompt: c</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 c
+```
+
+</div>
 
 ### Assistant
 
@@ -845,21 +1090,31 @@ Your project type is **SaaS B2B**, and I've loaded the key discovery questions s
 
 **SaaS B2B Key Questions:**
 
-**1. Multi-tenant architecture? How should multiple enterprise customers be isolated from each other? Separate databases? Shared database with tenant-scoped queries? Shared tables with tenant ID filtering?**
+1. Multi-tenant architecture? How should multiple enterprise customers be isolated from each other? Separate databases? Shared database with tenant-scoped queries? Shared tables with tenant ID filtering?
 
-**2. Permission model? Beyond the basic user/admin/read-only roles, what's your permission architecture? Is it just role-based, or do you need finer-grained permissions? Can roles be customized per customer?**
+2. Permission model? Beyond the basic user/admin/read-only roles, what's your permission architecture? Is it just role-based, or do you need finer-grained permissions? Can roles be customized per customer?
 
-**3. Subscription tiers? Are you offering multiple tiers of enterprise auth? (e.g., Basic SSO tier, Advanced with SCIM tier, Premium with advanced features?) Or is enterprise auth a single offering?**
+3. Subscription tiers? Are you offering multiple tiers of enterprise auth? (e.g., Basic SSO tier, Advanced with SCIM tier, Premium with advanced features?) Or is enterprise auth a single offering?
 
-**4. Integrations? Beyond OIDC, what integrations matter? SCIM provisioning to/from IdPs? Webhook notifications for audit events? API for partners to extend?**
+4. Integrations? Beyond OIDC, what integrations matter? SCIM provisioning to/from IdPs? Webhook notifications for audit events? API for partners to extend?
 
-**5. Compliance? What compliance certifications or standards are you targeting? (SOC 2, ISO 27001, GDPR, HIPAA, etc.?) Are these must-haves for MVP or growth-phase?**
+5. Compliance? What compliance certifications or standards are you targeting? (SOC 2, ISO 27001, GDPR, HIPAA, etc.?) Are these must-haves for MVP or growth-phase?
 
 **Which of these feels most important to define now? Or should I ask them in a different order?**
 
-### User
+</details>
 
+<details><summary><strong>## Request 28</strong> • Prompt: 5</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 5
+```
+
+</div>
 
 ### Assistant
 
@@ -867,34 +1122,44 @@ Your project type is **SaaS B2B**, and I've loaded the key discovery questions s
 
 This is foundational for enterprise trust. Help me understand your target:
 
-**1. Which certifications are non-negotiable for your initial enterprise customers?**
+1. Which certifications are non-negotiable for your initial enterprise customers?
    - SOC 2 Type II (most common for SaaS)
    - ISO 27001 (information security standard)
    - GDPR (for EU customers)
    - HIPAA (if healthcare/regulated industries)
    - Industry-specific (e.g., PCI-DSS if you touch payments)
-   - Or is compliance "nice-to-have" while you build?
+   - **Or is compliance "nice-to-have" while you build?**
 
 2. **Timeline:**
-   - Do you need these certifications before MVP launch?
-   - Or are they a post-launch growth requirement (first 6-12 months)?
+   - **Do you need these certifications before MVP launch?**
+   - **Or are they a post-launch growth requirement (first 6-12 months)?**
    - (This affects your MVP scope significantly)
 
 3. **Audit readiness:**
-   - Are your initial pilot customers asking for audit trails and compliance reports?
-   - Or are they just trusting the security model for now?
+   - **Are your initial pilot customers asking for audit trails and compliance reports?**
+   - **Or are they just trusting the security model for now?**
 
 4. **Data handling:**
-   - Do you need to handle sensitive customer data with specific encryption/retention policies?
-   - Are there data residency requirements (EU data stays in EU, etc.)?
+   - **Do you need to handle sensitive customer data with specific encryption/retention policies?**
+   - **Are there data residency requirements (EU data stays in EU, etc.)?**
 
 My sense: For enterprise auth, **SOC 2 Type II readiness is table-stakes**, but you might achieve that over 12 months rather than day 1. GDPR compliance (data minimization, retention, subject rights) should be built in from the start.
 
 **What's your thinking on compliance timing and requirements?**
 
-### User
+</details>
 
+<details><summary><strong>## Request 29</strong> • Prompt: 1</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 1
+```
+
+</div>
 
 ### Assistant
 
@@ -903,19 +1168,19 @@ My sense: For enterprise auth, **SOC 2 Type II readiness is table-stakes**, but 
 Let me dig deeper on this to shape your requirements:
 
 1. **SOC 2 Scope:**
-   - Full scope (all controls: security, availability, processing integrity, confidentiality, privacy)?
-   - Or focused scope (just security and access controls, since that's your differentiator)?
+   - **Full scope (all controls: security, availability, processing integrity, confidentiality, privacy)?**
+   - **Or focused scope (just security and access controls, since that's your differentiator)?**
 
 2. **Timeline:**
-   - When do you need SOC 2 Type II audit complete?
-     - Before MVP launch (aggressive, affects MVP scope)?
-     - Month 3-6 post-launch (realistic for most SaaS)?
-     - Month 12 (gives you time to mature)?
+   - **When do you need SOC 2 Type II audit complete?**
+     - **Before MVP launch (aggressive, affects MVP scope)?**
+     - **Month 3-6 post-launch (realistic for most SaaS)?**
+     - **Month 12 (gives you time to mature)?**
 
 3. **Supporting Compliance:**
-   - Beyond SOC 2, are you also targeting GDPR (especially if EU customers)?
-   - PCI-DSS (if handling payment data)?
-   - Or is SOC 2 your sole compliance focus for now?
+   - **Beyond SOC 2, are you also targeting GDPR (especially if EU customers)?**
+   - **PCI-DSS (if handling payment data)?**
+   - **Or is SOC 2 your sole compliance focus for now?**
 
 4. **MVP Impact:**
    - For SOC 2 readiness, your MVP needs:
@@ -931,9 +1196,19 @@ My sense: **SOC 2 Type II is achievable in 6-12 months for a focused SaaS B2B pr
 
 **What's your target completion date for SOC 2 Type II?**
 
-### User
+</details>
 
+<details><summary><strong>## Request 30</strong> • Prompt: GDPR</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 GDPR
+```
+
+</div>
 
 ### Assistant
 
@@ -942,22 +1217,19 @@ Got it — **GDPR is your compliance priority.**
 Let me clarify your compliance strategy:
 
 1. **GDPR vs SOC 2:**
-   - Are you going GDPR-first (European focus, EU customer requirements)?
-   - Or do you want both GDPR + SOC 2 (serve global enterprise)?
-   - Or is SOC 2 secondary to GDPR?
+   - **Are you going GDPR-first (European focus, EU customer requirements)?**
+   - **Or do you want both GDPR + SOC 2 (serve global enterprise)?**
+   - **Or is SOC 2 secondary to GDPR?**
 
 2. **GDPR Scope for Enterprise Auth:**
-   - Which GDPR obligations matter most for your product?
+   - **Which GDPR obligations matter most for your product?**
      - **Data minimization:** Collect only auth/identity data needed, nothing extra
      - **Consent & transparency:** Users know why you're collecting their data
      - Retention: How long do you keep audit logs? (90 days? 1 year? 7 years for compliance?)
      - **Subject rights:** Users can request data export, deletion (except immutable audit logs)
-     - Processor agreements: Does todo-react act as data processor for enterprise customers?
+     - **Processor agreements: Does todo-react act as data processor for enterprise customers?**
      - **DPA (Data Processing Agreement):** Enterprise customers need this
-
 ---
-
-[↑ Zurück zum Index](index.md)
      - **Breach notification:** 72-hour incident notification procedures
 
 3. **MVP Impact:**
@@ -970,15 +1242,25 @@ Let me clarify your compliance strategy:
    - These are legal/process requirements, not heavy engineering
 
 4. **Timeline:**
-   - When do you need GDPR compliance documented?
+   - **When do you need GDPR compliance documented?**
      - Before MVP (show customers you're compliant**)?**
      - By month 3 (after first enterprise deployments**)?**
 
-What's driving the GDPR focus — EU customers, regulatory requirement, or best practice?
+**What's driving the GDPR focus — EU customers, regulatory requirement, or best practice?**
 
-### User
+</details>
 
+<details><summary><strong>## Request 31</strong> • Prompt: 2</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 2
+```
+
+</div>
 
 ### Assistant
 
@@ -991,11 +1273,11 @@ Perfect — **GDPR Scope for enterprise authentication.** Let me focus the key G
    - Should you limit what identity data you store? (E.g., don't store full name unless needed?)
 
 2. **Retention Policies:**
-   - How long should you keep authentication logs?
+   - **How long should you keep authentication logs?**
      - Option A: 90 days (minimal compliance)
      - Option B: 1 year (auditing standard)
      - Option C: 7 years (regulatory/legal hold)
-   - Which works for your enterprise customers?
+   - **Which works for your enterprise customers?**
 
 3. **Data Processing Agreements (DPA):**
    - Every enterprise customer will ask: "Who owns the data? What are your privacy terms?"
@@ -1007,14 +1289,24 @@ Perfect — **GDPR Scope for enterprise authentication.** Let me focus the key G
 
 4. **Subject Rights:**
    - If an employee leaves a company, they can request data deletion
-   - Can you delete their authentication history, or is that immutable for audit?
+   - **Can you delete their authentication history, or is that immutable for audit?**
    - (Typically: delete personal data, keep anonymized audit trail)
 
 **Which of these should be built into your MVP vs. handled post-launch?**
 
-### User
+</details>
 
+<details><summary><strong>## Request 32</strong> • Prompt: 4</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 4
+```
+
+</div>
 
 ### Assistant
 
@@ -1049,15 +1341,25 @@ Let me explore your approach:
 **For your MVP, which feels right?**
 
 **And one more clarification: Who initiates the deletion request?**
-- The employee directly (through a self-service request)?
-- The enterprise admin (on behalf of the company)?
-- Both?
+- **The employee directly (through a self-service request)?**
+- **The enterprise admin (on behalf of the company)?**
+- **Both?**
 
 This shapes how you build the deletion workflow.
 
-### User
+</details>
 
+<details><summary><strong>## Request 33</strong> • Prompt: 3</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 3
+```
+
+</div>
 
 ### Assistant
 
@@ -1090,16 +1392,24 @@ Now, **one final question on the deletion workflow:**
 
 Once you confirm, I'll have everything to draft the **SaaS B2B-specific requirements** section covering multi-tenancy, permissions, compliance, and integration architecture.
 
-### User
+</details>
 
+<details><summary><strong>## Request 34</strong> • Prompt: 3</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 3
+```
+
+</div>
 
 ### Assistant
 
 Perfect. Now I have everything to draft the **SaaS B2B-Specific Requirements** section. Let me synthesize what we've discovered:
-
 ---
-
 ## SaaS B2B Specific Requirements
 
 ### Multi-Tenant Architecture
@@ -1192,19 +1502,27 @@ Both employee self-service and admin-initiated deletion are supported:
 4. Validates configuration with test login
 5. Invites employees to use the system
 6. Employees authenticate on first login, data is automatically available
-
 ---
-
-Here's the SaaS B2B-specific content I've drafted. Does this capture the technical architecture and compliance strategy you want? Any refinements before we append it to the PRD?
+**Here's the SaaS B2B-specific content I've drafted. Does this capture the technical architecture and compliance strategy you want? Any refinements before we append it to the PRD?**
 
 **Select:**
-[A] Advanced Elicitation
-[P] Party Mode
-[C] Continue to Scoping (Step 8 of 11)
+- [A] Advanced Elicitation
+- [P] Party Mode
+- [C] Continue to Scoping (Step 8 of 11)
 
-### User
+</details>
 
+<details><summary><strong>## Request 35</strong> • Prompt: c</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 c
+```
+
+</div>
 
 ### Assistant
 
@@ -1220,9 +1538,19 @@ Appending SaaS B2B-Specific Requirements to PRD, updating frontmatter, and loadi
 
 [Tool] Reading [](file:///d%3A/harrybin/todo-react-playwright/_bmad-output/planning-artifacts/prd.md#280-280), lines 280 to 301
 
-### User
+</details>
 
+<details><summary><strong>## Request 36</strong> • Prompt: 2</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 2
+```
+
+</div>
 
 ### Assistant
 
@@ -1310,19 +1638,27 @@ Let me conduct the scoping analysis:
 **Market Risks:** Position mandatory MFA as differentiator (not blocker); offer trial period; publish SOC 2 roadmap
 **Resource Risks:** Prioritize authentication core first; defer WebAuthn if team < 4; consider external security review for OIDC
 ```
-
 ---
-
 **Does this single-release scope capture your vision accurately, or would you adjust must-have vs nice-to-have priorities?**
 
 **Select:**  
-[A] Advanced Elicitation — Deeper challenge on MVP boundaries  
-[P] Party Mode — Get architect/security/PM perspectives  
-[C] Continue to Functional Requirements (Step 9)
+- [A] Advanced Elicitation — Deeper challenge on MVP boundaries
+- [P] Party Mode — Get architect/security/PM perspectives
+- [C] Continue to Functional Requirements (Step 9)
 
-### User
+</details>
 
+<details><summary><strong>## Request 37</strong> • Prompt: c</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 c
+```
+
+</div>
 
 ### Assistant
 
@@ -1338,9 +1674,19 @@ c
 
 [Tool] Reading skill `bmad-create-prd`: [](file:///d%3A/harrybin/todo-react-playwright/.agents/skills/bmad-create-prd/steps-c/step-09-functional.md)
 
-### User
+</details>
 
+<details><summary><strong>## Request 38</strong> • Prompt: c</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 c
+```
+
+</div>
 
 ### Assistant
 
@@ -1355,9 +1701,7 @@ c
 Functional requirements saved. Now **Step 10: Non-Functional Requirements** — defining HOW WELL the system must perform.
 
 Let me assess which NFR categories matter for enterprise authentication:
-
 ---
-
 ## **NFR Relevance Assessment**
 
 **| Category | Applies? | Why? |**
@@ -1368,9 +1712,7 @@ Let me assess which NFR categories matter for enterprise authentication:
 | **Reliability** | ✅ CRITICAL | Auth system downtime = product downtime; needs high availability |
 | **Integration** | ✅ YES | OIDC works with multiple IdP vendors; reliability matters |
 | **Accessibility** | ⚠️ CONDITIONAL | Enterprise software; admin UI should follow WCAG standards but not primary differentiator |
-
 ---
-
 ## **Proposed Non-Functional Requirements**
 
 ### **Performance**
@@ -1381,17 +1723,37 @@ Let me assess which NFR categories matter for enterprise authentication:
 - **NFR4:** Admin dashboard loads and displays real-time statistics (active sessions, failed login count) in <1 second
 - **NFR5:** API endpoints for task CRUD operations respond within 200ms
 
-### User
+</details>
 
+<details><summary><strong>## Request 39</strong> • Prompt: c</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 c
+```
+
+</div>
 
 ### Assistant
 
 (keine sichtbare Assistant-Antwort gespeichert)
 
-### User
+</details>
 
+<details><summary><strong>## Request 40</strong> • Prompt: c</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 c
+```
+
+</div>
 
 ### Assistant
 
@@ -1404,9 +1766,7 @@ c
 [Tool] Reading skill `bmad-create-prd`: [](file:///d%3A/harrybin/todo-react-playwright/.agents/skills/bmad-create-prd/steps-c/step-12-complete.md)
 
 Polish complete. Now **Step 12: Workflow Completion** — finalizing the PRD and charting next steps.
-
 ---
-
 ## **✅ PRD Workflow Complete**
 
 Congratulations! The **Product Requirements Document for todo-react Enterprise Authentication** is now complete, polished, and ready for downstream teams.
@@ -1425,9 +1785,7 @@ Congratulations! The **Product Requirements Document for todo-react Enterprise A
 | Document Polish | ✅ Complete | Flow optimized, duplication reduced, 100% information density |
 
 **Total Pages:** ~25 pages of comprehensive, implementation-ready requirements
-
 ---
-
 ## **Validation Options**
 
 Before moving forward, you have two paths:
@@ -1441,9 +1799,7 @@ Run a comprehensive check to ensure the PRD has everything needed for architectu
 
 ### **Option 2: Proceed Directly**
 Skip validation and move directly to the next workflows (architecture, UX design, epic breakdown). Validation can happen during architecture reviews if preferred.
-
 ---
-
 ## **What Happens Next**
 
 This PRD now feeds into:
@@ -1451,18 +1807,26 @@ This PRD now feeds into:
 2. **Technical Architecture** — Build systems to meet all 32 non-functional requirements
 3. **Epic Breakdown** — Create user stories from each FR, traceable to success criteria
 4. **Development** — Implement with full traceability to PRD
-
 ---
-
 **What would you like to do?**
 
 - **[V]** Run validation check (Check Implementation Readiness)
 - **[P]** Proceed to next workflows (skip validation for now)
 - **[H]** See help & available next workflows
 
-### User
+</details>
 
+<details><summary><strong>## Request 41</strong> • Prompt: v</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 v
+```
+
+</div>
 
 ### Assistant
 
@@ -1493,9 +1857,7 @@ Let me check what's in the planning-artifacts folder directly:
 [Tool] Reading skill `bmad-check-implementation-readiness`: [](file:///d%3A/harrybin/todo-react-playwright/.agents/skills/bmad-check-implementation-readiness/templates/readiness-report-template.md)
 
 **Document Discovery Complete**
-
 ---
-
 ## **Documents Found**
 
 ### ✅ PRD Documents
@@ -1506,16 +1868,24 @@ Let me check what's in the planning-artifacts folder directly:
 (25+ pages, just completed and polished)
 
 **Status:** Single, complete PRD — no duplicates.
-
 ---
-
 ## **Required Documents - Assessment Status**
 
-| Document Type | Status | Required?
+**| Document Type | Status | Required?**
 
-### User
+</details>
 
+<details><summary><strong>## Request 42</strong> • Prompt: h</summary>
+
+### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
+
+```
 h
+```
+
+</div>
 
 ### Assistant
 
@@ -1524,9 +1894,7 @@ h
 [Tool] Reading [](file:///d%3A/harrybin/todo-react-playwright/_bmad/_config/bmad-help.csv)
 
 Perfect! Here's your **recommended next workflow sequence** after the PRD:
-
 ---
-
 ## **Next Steps: Phase 3-Solutioning Workflow** 🚀
 
 Your PRD is complete. Now you need three documents before implementation:
@@ -1537,11 +1905,14 @@ Your PRD is complete. Now you need three documents before implementation:
 - `[VP]` **Validate PRD** — `bmad-validate-prd`
 - Quick quality check on your PRD for internal consistency and completeness
 - Good safety step before investing in Architecture work
-
 ---
-
 **[2] Create UX Design** (recommended)
 - `[CU]` **Create UX Design** — `bmad-create-ux-design`
 - Plan interaction patterns, user flows, and UI specifications
 - Strongly recommended since UI is primary for admin console + employee
 
+</details>
+
+---
+
+[↑ Zurück zum Index](index.md)

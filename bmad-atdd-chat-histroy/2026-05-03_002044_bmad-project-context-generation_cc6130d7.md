@@ -7,11 +7,17 @@
 
 [↑ Zurück zum Index](index.md)
 
+<details><summary><strong>## Request 1</strong> • Prompt: /bmad-generate-project-context</summary>
+
 ### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
 
 ```
 /bmad-generate-project-context
 ```
+
+</div>
 
 ### Assistant
 
@@ -27,11 +33,19 @@ First, I'll resolve the workflow configuration and load the necessary context.
 
 [Tool] Reading skill `bmad-generate-project-context`: [](file:///d%3A/harrybin/todo-react-playwright/.agents/skills/bmad-generate-project-context/steps/step-01-discover.md#100-100), lines 100 to 187
 
+</details>
+
+<details><summary><strong>## Request 2</strong> • Prompt: c</summary>
+
 ### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
 
 ```
 c
 ```
+
+</div>
 
 ### Assistant
 
@@ -65,11 +79,7 @@ The context file now contains:
 - ESLint compliance
 - Testing architecture (Playwright)
 - Import conventions
-
 ---
-
-[↑ Zurück zum Index](index.md)
-
 ✅ **Code Pattern Examples** (ready-to-use snippets)
 ✅ **Testing Architecture** guidance
 ✅ **Common Pitfalls** to avoid
@@ -96,13 +106,26 @@ Would you like me to:
 - **[U] Upload** - Store this in your memory for future projects
 - **[D] Done** - Workflow complete
 
+</details>
+
+<details><summary><strong>## Request 3</strong> • Prompt: u</summary>
+
 ### 👤 User Input
+
+<div style="background-color: #E3F2FD; border-left: 4px solid #1976D2; padding: 12px; border-radius: 4px; margin: 8px 0;">
 
 ```
 u
 ```
 
+</div>
+
 ### Assistant
 
 (keine sichtbare Assistant-Antwort gespeichert)
 
+</details>
+
+---
+
+[↑ Zurück zum Index](index.md)
