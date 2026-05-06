@@ -147,38 +147,107 @@ Der Playwright Inspector öffnet sich dann automatisch beim nächsten Testlauf �
 
 ---
 
-Starte die App und mach dich kurz mit ihr vertraut:
+## Überblick über die App und Konfigurationshinweise
+
+### App starten
 
 ```bash
-npm run dev   # http://localhost:3000
+npm run dev   # startet Vite Dev-Server auf http://localhost:3000
 ```
 
-Die **TodoMatic**-App bietet:
+> 💡 Das Repo enthält eine `.nvmrc`-Datei. Falls du `nvm` verwendest, wechsle zuerst zur richtigen Node-Version:
+> ```bash
+> nvm use   # liest Version aus .nvmrc
+> ```
 
-| Feature | UI-Element |
-|---------|-----------|
-| Aufgabe hinzufügen | Textfeld + „Add"-Button |
-| Aufgabe erledigen | Checkbox je Todo |
-| Aufgabe bearbeiten | „Edit"-Button → Textfeld → „Save" |
-| Aufgabe löschen | „Delete"-Button |
-| Filter | „All" / „Active" / „Completed" |
-| Remote-Tasks laden | „Load remote tasks"-Button → Fetch von `remoteTasks.json` |
+### Verfügbare npm-Skripte
 
-Relevante Quelldateien:
+| Skript | Zweck |
+|--------|-------|
+| `npm run dev` | App lokal starten (Port 3000) |
+| `npm test` | Playwright-Tests headless ausführen |
+| `npm run test:ui` | Playwright UI-Modus (interaktiv) |
+| `npm run build` | Produktions-Build erstellen |
+| `npm run lint` | ESLint ausführen |
 
+### App-Konfiguration auf einen Blick
+
+**`vite.config.js`** setzt den Dev-Server-Port explizit auf **3000**:
+
+```js
+// vite.config.js
+export default defineConfig({
+  plugins: [react()],
+  base: 'http://localhost:3000/',
+});
 ```
-src/
-  App.tsx           # Haupt-Komponente, Zustand, Filter
-  Task.ts           # TypeScript-Interface Task
-  components/
-    Form.tsx         # Eingabeformular
-    FilterButton.tsx # Filter-Buttons (data-testid="testID-<Name>")
-    Todo.tsx         # Einzelnes Todo-Item
-public/
-  remoteTasks.json  # Wird via fetch() geladen
+
+→ Die Playwright-Config muss `baseURL: 'http://localhost:3000'` verwenden, damit relative Pfade (`'/'`) korrekt aufgelöst werden.
+
+**`src/main.tsx`** enthält einen **fest einkompilierten initialen Datensatz**:
+
+```ts
+const DATA: Task[] = [
+  {
+    id: 'todo-iYhueLHTq-6wprHhsXYF6',
+    name: 'test',                        // ← diese Aufgabe ist beim App-Start immer vorhanden
+    time: '2024-11-18T16:12:44.160Z',
+    location: { latitude: 49.6370557, longitude: 6.9014314 },
+    completed: false,
+  },
+];
 ```
 
----
+→ Alle Tests, die eine frische Seite laden, sehen genau **eine Aufgabe mit dem Namen „test"**.
+
+**`public/remoteTasks.json`** wird vom „Load remote tasks"-Button per `fetch()` geladen und **ersetzt die komplette Taskliste**. Beim Testen sollte die Anfrage gemockt werden (→ Exercise 7).
+
+### ⚠️ Wichtiger Hinweis: Geolocation-Pflicht
+
+Die `addTask`-Funktion in `App.tsx` ruft **immer** `navigator.geolocation.getCurrentPosition` auf, bevor eine Aufgabe gespeichert wird:
+
+```ts
+// App.tsx – addTask
+function addTask(name: string) {
+  navigator.geolocation.getCurrentPosition((position) => {
+    const newTask = { id: ..., name, location: position.coords, ... };
+    setTasks([...tasks, newTask]);
+  });
+}
+```
+
+**Ohne Geolocation-Mock wird keine Aufgabe gespeichert** – der Callback wird einfach nie aufgerufen. Das betrifft alle Tests, die eine neue Aufgabe anlegen (Exercises 2, 8).
+
+→ Lösung: Geolocation **vor** `page.goto()` mocken:
+
+```ts
+// TypeScript
+await context.grantPermissions(['geolocation']);
+await context.setGeolocation({ latitude: 49.637, longitude: 6.901 });
+```
+
+```csharp
+// C# – ContextOptions() überschreiben
+public override BrowserNewContextOptions ContextOptions() => new()
+{
+    Permissions = new[] { "geolocation" },
+    Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+};
+```
+
+### Selektoren und Test-IDs in der App
+
+| Element | Selektor / Attribut | Wo definiert |
+|---------|---------------------|--------------|
+| Eingabefeld für neue Aufgabe | `#new-todo-input` | `Form.tsx` |
+| „Add"-Button | `#myUniqueID` | `Form.tsx` |
+| Filter-Buttons | `data-testid="testID-All"` / `testID-Active` / `testID-Completed` | `FilterButton.tsx` |
+| Aufgaben-Counter | `#list-heading` | `App.tsx` |
+| Aufgaben-Checkboxen | `role="checkbox"` | `Todo.tsx` |
+
+> 💡 Playwright's `getByTestId()` sucht standardmäßig nach `data-testid`-Attributen – das passt exakt zu den `testID-*`-Attributen in `FilterButton.tsx`.
+
+
 
 ## Setup: Playwright installieren und konfigurieren
 
@@ -196,23 +265,62 @@ Beantworte die Fragen des Wizard wie folgt (Empfehlung):
 | GitHub Actions Workflow? | `yes` |
 | Browser installieren? | `yes` |
 
-Passe `playwright.config.ts` an:
+Ersetze die generierte `playwright.config.ts` durch diese vollständige Konfiguration:
 
 ```ts
 // playwright.config.ts
-use: {
-  baseURL: 'http://localhost:3000',
-},
-webServer: {
-  command: 'npm run dev',
-  url: 'http://localhost:3000',
-  reuseExistingServer: !process.env.CI,
-},
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  // Alle .spec.ts-Dateien im tests/-Ordner werden ausgeführt
+  testDir: './tests',
+
+  // Jeden Test bis zu 2x wiederholen bei Fehler (nur in CI)
+  retries: process.env.CI ? 2 : 0,
+
+  // Parallele Ausführung
+  workers: process.env.CI ? 1 : undefined,
+
+  // HTML-Report nach jedem Lauf erzeugen
+  reporter: 'html',
+
+  use: {
+    // Basis-URL: alle page.goto('/') Aufrufe lösen gegen diese URL auf
+    baseURL: 'http://localhost:3000',
+
+    // Trace bei erstem Retry aufzeichnen (für Fehleranalyse im Trace Viewer)
+    trace: 'on-first-retry',
+
+    // Screenshot bei Testfehler
+    screenshot: 'only-on-failure',
+  },
+
+  // Browser-Projekte – mindestens Chromium aktivieren
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // { name: 'firefox',  use: { ...devices['Desktop Firefox'] } },
+    // { name: 'webkit',   use: { ...devices['Desktop Safari'] } },
+  ],
+
+  // App automatisch starten; bereits laufende Instanz in der Entwicklung wiederverwenden
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 30_000,
+  },
+});
 ```
 
+Tests ausführen:
+
 ```bash
-npm test
+npm test              # headless
+npm run test:ui       # interaktiver UI-Modus
+npx playwright test --headed   # sichtbarer Browser
 ```
+
+> ℹ️ Die von Playwright generierten Beispiel-Tests (z. B. `tests/example.spec.ts`) können gelöscht werden.
 
 ### 🟪 C# / .NET
 
