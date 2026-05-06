@@ -2040,8 +2040,8 @@ public class CrossBrowserTests
     {
         using var playwright = await Playwright.CreateAsync();
 
-        // Neue Instanz je Browser – BrowserTypeLaunchOptions ist eine Klasse,
-        // kein Record, und unterstützt daher keinen with-Ausdruck.
+        // Neue Instanz je Browser – BrowserTypeLaunchOptions ist eine reguläre C#-Klasse
+        // ohne Copy-Infrastruktur für with-Ausdrücke (kein Record, kein Clone-Mechanismus).
         IBrowser browser = browserName switch
         {
             "Chromium" => await playwright.Chromium.LaunchAsync(
