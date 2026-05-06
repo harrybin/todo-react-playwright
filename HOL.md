@@ -4,11 +4,11 @@
 
 **Repo:** `harrybin/todo-react-playwright`  
 **Stack:** React 19 · TypeScript · Vite · MUI · Playwright  
-**Dauer:** ca. 3–4 Stunden
+**Dauer:** ca. 4–5 Stunden
 
-> Jede Übung enthält Lösungshinweise für **zwei Sprachen** – wähle die für dich passende:
-> - 🟦 **TypeScript / JavaScript** (Node.js + `@playwright/test`)
-> - 🟪 **C# / .NET** (`Microsoft.Playwright.NUnit`)
+> Jede Übung enthält Lösungshinweise für **zwei Sprachen** und **zwei IDEs** – wähle jeweils die für dich passende:
+> - 🟦 **TypeScript / JavaScript** (Node.js + `@playwright/test`) → IDE: **Visual Studio Code**
+> - 🟪 **C# / .NET** (`Microsoft.Playwright.NUnit`) → IDE: **Visual Studio**
 
 ---
 
@@ -54,7 +54,72 @@ pwsh bin/Debug/net8.0/playwright.ps1 install
 
 ---
 
-## Überblick über die App
+## IDE-Setup
+
+### 🟦 Visual Studio Code (TypeScript / JavaScript)
+
+**Empfohlene Erweiterungen** – einmalig installieren:
+
+| Erweiterung | ID | Zweck |
+|-------------|----|-------|
+| Playwright Test for VS Code | `ms-playwright.playwright` | Tests ausführen, debuggen, Codegen starten |
+| ESLint | `dbaeumer.vscode-eslint` | Linting |
+
+**Installation über die Kommandozeile:**
+
+```bash
+code --install-extension ms-playwright.playwright
+```
+
+**Playwright-Panel öffnen:**  
+Klicke in der linken Activity Bar auf das ▶️ **Testing**-Icon (Reagenzglas). Dort siehst du alle Tests, kannst sie einzeln starten und direkt in den Trace Viewer springen.
+
+**Nützliche VS-Code-Befehle** (`Ctrl+Shift+P`):
+
+| Befehl | Wirkung |
+|--------|---------|
+| `Playwright: Record new` | Codegen im Browser starten |
+| `Playwright: Show trace viewer` | Letzten Trace öffnen |
+| `Playwright: Pick locator` | Element im Browser anklicken → Locator wird ins Clipboard kopiert |
+
+**Debug-Konfiguration** (bereits durch die Erweiterung enthalten):  
+Setze einen Breakpoint in einer Testdatei → Rechtsklick auf den Test → **Debug Test**.  
+Der Browser öffnet sich im *Slow-Motion-Modus* und hält am Breakpoint an.
+
+---
+
+### 🟪 Visual Studio (C# / .NET)
+
+**Voraussetzungen:**
+
+- Visual Studio 2022 (Version 17.0+) mit Workload **.NET desktop development**
+- NuGet-Paket `Microsoft.Playwright.NUnit` (bereits im Testprojekt vorhanden)
+
+**Test Explorer öffnen:**  
+`Test` → `Test Explorer` (`Ctrl+E, T`)  
+Alle NUnit-Tests werden automatisch erkannt. Klicke auf ▶️ zum Ausführen oder auf 🐛 zum Debuggen.
+
+**Breakpoints setzen:**  
+Klicke links neben eine Zeile im Testcode → roter Punkt erscheint.  
+Im Test Explorer auf **Debug Selected Tests** klicken – Visual Studio hält am Breakpoint an, während der Browser im Hintergrund weiterläuft.
+
+**Playwright-Inspektor aus dem Test heraus öffnen:**  
+Setze vor dem zu untersuchenden Schritt folgende Umgebungsvariable im Debug-Profil oder per Code:
+
+```csharp
+// am Anfang des Tests – öffnet den Playwright Inspector
+Environment.SetEnvironmentVariable("PWDEBUG", "1");
+```
+
+Alternativ in den **Debug Launch Profiles** (Rechtsklick auf Projekt → Properties → Debug):
+
+| Variable | Wert |
+|----------|------|
+| `PWDEBUG` | `1` |
+
+Der Playwright Inspector öffnet sich dann automatisch beim nächsten Testlauf über den Debugger.
+
+---
 
 Starte die App und mach dich kurz mit ihr vertraut:
 
@@ -735,7 +800,241 @@ public class PomTests : PageTest
 
 ---
 
-## Exercise 9 – CI: Playwright in GitHub Actions
+## Exercise 9 – Debugging-Tools: Codegen, Trace Viewer und Browser DevTools
+
+### Hintergrund
+
+Playwright liefert drei leistungsstarke Werkzeuge, die beim Schreiben und Debuggen von Tests helfen:
+
+| Werkzeug | Wozu? |
+|----------|-------|
+| **Codegen** | Interaktionen im Browser aufzeichnen → fertiger Testcode wird generiert |
+| **Trace Viewer** | Schritt-für-Schritt-Replay eines fehlgeschlagenen Tests inkl. Screenshots, Netzwerk, Konsole |
+| **Browser DevTools** | Klassische Entwicklertools (DOM-Inspektor, Network, Console) direkt im Playwright-Browser |
+
+---
+
+### Teil A – Codegen: Testcode aufzeichnen
+
+#### Aufgabe
+
+Zeichne mit Codegen einen Test auf, der:
+1. Die App öffnet,
+2. eine neue Aufgabe eingibt und auf „Add" klickt,
+3. den „Delete"-Button anklickt.
+
+Kopiere den generierten Code in eine neue Testdatei und führe ihn aus.
+
+#### 🟦 TypeScript – Codegen starten
+
+**Variante 1 – Terminal:**
+```bash
+npx playwright codegen http://localhost:3000
+```
+
+**Variante 2 – VS Code:**  
+`Ctrl+Shift+P` → `Playwright: Record new` → URL eingeben.
+
+Ein Browserfenster und der **Playwright Inspector** öffnen sich. Alle Klicks und Eingaben werden in Echtzeit als TypeScript-Code angezeigt.  
+Klicke auf 📋 **Copy**, um den Code in die Zwischenablage zu kopieren.
+
+> **Tipp:** Mit dem **Pick locator**-Button (🎯) kannst du einzelne Elemente anklicken, um deren optimalen Locator zu ermitteln – ohne einen vollständigen Test aufzuzeichnen.
+
+#### 🟪 C# – Codegen starten
+
+```bash
+pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000 --target=csharp-nunit
+```
+
+Der `--target=csharp-nunit`-Parameter erzeugt direkt NUnit-kompatiblen C#-Code.
+
+**Alternativ aus Visual Studio:**  
+Setze `PWDEBUG=console` als Umgebungsvariable und starte einen Test – die Playwright-Inspector-UI öffnet sich automatisch.
+
+---
+
+### Teil B – Trace Viewer: fehlgeschlagene Tests analysieren
+
+#### Aufgabe
+
+1. Schreibe absichtlich einen fehlschlagenden Test (z. B. prüfe auf Text, der nicht existiert).
+2. Aktiviere die Trace-Aufzeichnung.
+3. Öffne den Trace und analysiere, an welchem Schritt der Test gescheitert ist.
+
+#### 🟦 TypeScript – Trace aktivieren
+
+In `playwright.config.ts`:
+```ts
+use: {
+  trace: 'on-first-retry',   // Trace beim ersten Retry aufzeichnen
+  // oder: 'on'              // immer aufzeichnen
+},
+```
+
+Nach einem fehlgeschlagenen Testlauf liegt der Trace unter `test-results/<testname>/trace.zip`.
+
+**Trace öffnen:**
+```bash
+npx playwright show-trace test-results/<testname>/trace.zip
+```
+
+Oder in VS Code: `Ctrl+Shift+P` → `Playwright: Show trace viewer` → Datei auswählen.
+
+**Im Trace Viewer:**
+- Linke Spalte: alle Aktionen des Tests (klicke eine an, um den zugehörigen Screenshot zu sehen)
+- Reiter **Network**: alle Netzwerkanfragen zum jeweiligen Zeitpunkt
+- Reiter **Console**: Konsolenausgaben
+- Reiter **Source**: Testquellcode mit markierter Zeile
+
+#### 🟪 C# – Trace aktivieren
+
+```csharp
+// In der Testklasse, z. B. in [SetUp]:
+await Context.Tracing.StartAsync(new()
+{
+    Screenshots = true,
+    Snapshots = true,
+    Sources = true,
+});
+```
+
+```csharp
+// In [TearDown]:
+await Context.Tracing.StopAsync(new()
+{
+    Path = $"trace-{TestContext.CurrentContext.Test.Name}.zip",
+});
+```
+
+**Trace öffnen:**
+```bash
+pwsh bin/Debug/net8.0/playwright.ps1 show-trace trace-<testname>.zip
+```
+
+---
+
+### Teil C – Browser DevTools
+
+#### Aufgabe
+
+Öffne die Browser-DevTools während eines laufenden Tests und inspiziere den DOM sowie die Netzwerkanfragen.
+
+#### 🟦 TypeScript
+
+Starte den Test im **Debug-Modus** mit `--debug`-Flag:
+
+```bash
+npx playwright test --debug
+```
+
+Der Playwright Inspector öffnet sich, der Browser läuft im Vordergrund.  
+Drücke im Inspector auf **Pause** → öffne dann mit `F12` die Browser DevTools.
+
+Alternativ: Setze in `playwright.config.ts` `slowMo: 1000` (Millisekunden pro Aktion), um genug Zeit zu haben:
+
+```ts
+use: {
+  headless: false,
+  slowMo: 1000,
+},
+```
+
+#### 🟪 C#
+
+```csharp
+// Am Anfang des Tests – startet den Playwright Inspector
+Environment.SetEnvironmentVariable("PWDEBUG", "1");
+```
+
+Oder starte aus Visual Studio heraus mit **Debug Selected Tests** (Breakpoint setzen → `F5`).  
+Der Browser öffnet sich sichtbar; drücke `F12` für DevTools.
+
+> **Wichtig:** `headless: false` (TS) bzw. `LaunchOptions = new() { Headless = false }` (C#) ist Voraussetzung, damit DevTools zugänglich sind.
+
+---
+
+### Lösungshinweis 🟦 TypeScript – vollständiger Trace-Test
+
+<details>
+<summary>Hinweis anzeigen (TypeScript)</summary>
+
+```ts
+// playwright.config.ts – Trace für alle Tests aktivieren
+use: {
+  baseURL: 'http://localhost:3000',
+  trace: 'on',
+  headless: false,
+  slowMo: 500,
+},
+```
+
+```ts
+// tests/trace-demo.spec.ts
+import { test, expect } from '@playwright/test';
+
+test('absichtlich fehlschlagender Test', async ({ page }) => {
+  await page.goto('/');
+  // Dieser Text existiert nicht – Test schlägt fehl
+  await expect(page.getByText('Diese Aufgabe gibt es nicht')).toBeVisible();
+});
+```
+
+Nach dem Lauf:
+```bash
+npx playwright show-trace test-results/trace-demo-absichtlich-fehlschlagender-Test/trace.zip
+```
+
+</details>
+
+### Lösungshinweis 🟪 C# – vollständiger Trace-Test
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+```csharp
+[TestFixture]
+public class TraceTests : PageTest
+{
+    [SetUp]
+    public async Task StartTracing()
+    {
+        await Context.Tracing.StartAsync(new()
+        {
+            Screenshots = true,
+            Snapshots = true,
+            Sources = true,
+        });
+    }
+
+    [TearDown]
+    public async Task StopTracing()
+    {
+        await Context.Tracing.StopAsync(new()
+        {
+            Path = $"trace-{TestContext.CurrentContext.Test.Name}.zip",
+        });
+    }
+
+    [Test]
+    public async Task AbsichtlichFehlschlagenderTest()
+    {
+        await Page.GotoAsync("http://localhost:3000/");
+        // Dieser Text existiert nicht – Test schlägt fehl
+        await Expect(Page.GetByText("Diese Aufgabe gibt es nicht")).ToBeVisibleAsync();
+    }
+}
+```
+
+Nach dem Lauf:
+```bash
+pwsh bin/Debug/net8.0/playwright.ps1 show-trace trace-AbsichtlichFehlschlagenderTest.zip
+```
+
+</details>
+
+---
+
+## Exercise 10 – CI: Playwright in GitHub Actions
 
 ### Aufgabe
 
@@ -866,6 +1165,10 @@ Schau dir den Quellcode an und überlege, welche weiteren Tests sinnvoll wären:
 | Page Object Model | [playwright.dev/docs/pom](https://playwright.dev/docs/pom) | [playwright.dev/dotnet/docs/pom](https://playwright.dev/dotnet/docs/pom) |
 | Netzwerk-Mocking | [playwright.dev/docs/mock](https://playwright.dev/docs/mock) | [playwright.dev/dotnet/docs/mock](https://playwright.dev/dotnet/docs/mock) |
 | Geolocation | [playwright.dev/docs/emulation#geolocation](https://playwright.dev/docs/emulation#geolocation) | [playwright.dev/dotnet/docs/emulation#geolocation](https://playwright.dev/dotnet/docs/emulation#geolocation) |
+| Codegen | [playwright.dev/docs/codegen](https://playwright.dev/docs/codegen) | [playwright.dev/dotnet/docs/codegen](https://playwright.dev/dotnet/docs/codegen) |
+| Trace Viewer | [playwright.dev/docs/trace-viewer](https://playwright.dev/docs/trace-viewer) | [playwright.dev/dotnet/docs/trace-viewer](https://playwright.dev/dotnet/docs/trace-viewer) |
+| VS Code Extension | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=ms-playwright.playwright) | – |
+| Debugging | [playwright.dev/docs/debug](https://playwright.dev/docs/debug) | [playwright.dev/dotnet/docs/debug](https://playwright.dev/dotnet/docs/debug) |
 
 ---
 
