@@ -1213,18 +1213,31 @@ pwsh bin/Debug/net8.0/playwright.ps1 show-trace trace-AbsichtlichFehlschlagender
 
 ---
 
-## Exercise 10 – CI: Playwright in GitHub Actions
+## Exercise 10 – CI: Tests in der Pipeline ausführen
 
-### Aufgabe
+Playwright-Tests lassen sich in verschiedenen CI/CD-Umgebungen automatisieren. Diese Übung zeigt **vier Varianten** – wähle die für euren Stack passende.
 
-Erstelle eine GitHub-Actions-Workflow-Datei, die:
+| Variante | Wann verwenden? |
+|----------|----------------|
+| **A – GitHub Actions** | Repository liegt auf GitHub |
+| **B – Azure Pipelines** | Azure DevOps als CI/CD-Plattform |
+| **C – Docker Container** | Reproduzierbare, isolierte Ausführung (lokal & in CI) |
+| **D – Azure Playwright Service** | Skalierbare Cloud-Ausführung auf Microsoft-Infrastruktur |
+
+### Aufgabe (alle Varianten)
+
+Richte einen automatisierten Testlauf ein, der:
 
 1. Bei jedem Push / PR auf `main` ausgeführt wird.
-2. Abhängigkeiten installiert **und** Playwright-Browser installiert.
+2. Abhängigkeiten installiert **und** Playwright-Browser bereitstellt.
 3. Die Tests ausführt.
-4. Den Playwright-HTML-Report als Artefakt hochlädt.
+4. Den Test-Report als Artefakt speichert.
 
-### Lösungshinweis 🟦 TypeScript
+---
+
+### Variante A – GitHub Actions
+
+#### Lösungshinweis 🟦 TypeScript
 
 <details>
 <summary>Hinweis anzeigen (TypeScript)</summary>
@@ -1267,7 +1280,7 @@ jobs:
 
 </details>
 
-### Lösungshinweis 🟪 C#
+#### Lösungshinweis 🟪 C# (NUnit / xUnit / MSTest)
 
 <details>
 <summary>Hinweis anzeigen (C#)</summary>
@@ -1288,7 +1301,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # App starten
+      # React-App starten
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -1324,6 +1337,434 @@ jobs:
 
 ---
 
+### Variante B – Azure Pipelines
+
+#### Lösungshinweis 🟦 TypeScript
+
+<details>
+<summary>Hinweis anzeigen (TypeScript)</summary>
+
+```yaml
+# azure-pipelines.yml
+trigger:
+  branches:
+    include: [main]
+
+pr:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '20.x'
+    displayName: Node.js einrichten
+
+  - script: npm ci
+    displayName: Abhängigkeiten installieren
+
+  - script: npx playwright install --with-deps
+    displayName: Playwright-Browser installieren
+
+  - script: npm test
+    displayName: Tests ausführen
+    env:
+      CI: true
+
+  - task: PublishPipelineArtifact@1
+    condition: always()
+    inputs:
+      targetPath: playwright-report
+      artifact: playwright-report-ts
+      publishLocation: pipeline
+```
+
+</details>
+
+#### Lösungshinweis 🟪 C# (NUnit / xUnit / MSTest)
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+```yaml
+# azure-pipelines.yml
+trigger:
+  branches:
+    include: [main]
+
+pr:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  # React-App starten
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '20.x'
+    displayName: Node.js einrichten
+
+  - script: npm ci
+    displayName: npm-Abhängigkeiten installieren
+
+  - script: npm run dev &
+    displayName: React-App im Hintergrund starten
+
+  - script: npx wait-on http://localhost:3000
+    displayName: Warten bis App bereit ist
+
+  # .NET Tests
+  - task: UseDotNet@2
+    inputs:
+      version: '8.x'
+    displayName: .NET SDK einrichten
+
+  - script: dotnet build
+    workingDirectory: TodoTests
+    displayName: Projekt bauen
+
+  - script: pwsh bin/Debug/net8.0/playwright.ps1 install --with-deps
+    workingDirectory: TodoTests
+    displayName: Playwright-Browser installieren
+
+  - script: dotnet test --logger "trx;LogFileName=results.trx"
+    workingDirectory: TodoTests
+    displayName: Tests ausführen
+
+  - task: PublishTestResults@2
+    condition: always()
+    inputs:
+      testResultsFormat: VSTest
+      testResultsFiles: 'TodoTests/TestResults/*.trx'
+    displayName: TRX-Ergebnisse veröffentlichen
+
+  - task: PublishPipelineArtifact@1
+    condition: always()
+    inputs:
+      targetPath: TodoTests/TestResults
+      artifact: playwright-report-dotnet
+      publishLocation: pipeline
+```
+
+</details>
+
+---
+
+### Variante C – Docker Container
+
+Das offizielle Playwright-Docker-Image `mcr.microsoft.com/playwright` enthält Node.js und alle Browser – kein separates `playwright install` nötig.
+
+> Stelle sicher, dass die verwendete Image-Version (`v1.52.0`) mit der im Projekt genutzten Playwright-Version übereinstimmt.
+
+#### Lokal ausführen
+
+**TypeScript**
+```bash
+# Tests direkt im Container starten (Repo-Ordner wird eingebunden)
+docker run --rm \
+  -v "$(pwd)":/work -w /work \
+  -e CI=true \
+  mcr.microsoft.com/playwright:v1.52.0-jammy \
+  /bin/bash -c "npm ci && npm test"
+```
+
+**C#** (App und Tests im selben Container)
+```bash
+docker run --rm \
+  -v "$(pwd)":/work -w /work \
+  mcr.microsoft.com/playwright/dotnet:v1.52.0-jammy \
+  /bin/bash -c "
+    # Node für die React-App
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
+    npm ci && npm run dev &
+    npx wait-on http://localhost:3000
+    cd TodoTests && dotnet build && dotnet test
+  "
+```
+
+#### Lösungshinweis 🟦 TypeScript – GitHub Actions mit Docker-Container
+
+<details>
+<summary>Hinweis anzeigen (TypeScript)</summary>
+
+```yaml
+# .github/workflows/playwright-docker.yml
+name: Playwright Tests (Docker)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.52.0-jammy
+      options: --user 1001   # verhindert Rechte-Probleme beim Schreiben
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: npm ci
+
+      - run: npm test
+        env:
+          CI: true
+          HOME: /root
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-docker-ts
+          path: playwright-report/
+          retention-days: 7
+```
+
+</details>
+
+#### Lösungshinweis 🟪 C# – Azure Pipelines mit Docker-Container
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+```yaml
+# azure-pipelines.yml (Docker-Variante)
+trigger:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: ubuntu-latest
+
+container: mcr.microsoft.com/playwright/dotnet:v1.52.0-jammy
+
+steps:
+  # Node.js für die React-App nachrüsten
+  - script: |
+      curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+      apt-get install -y nodejs
+    displayName: Node.js im Container installieren
+
+  - script: npm ci && npm run dev &
+    displayName: React-App starten
+
+  - script: npx wait-on http://localhost:3000
+    displayName: Warten bis App bereit ist
+
+  - script: dotnet build
+    workingDirectory: TodoTests
+    displayName: Projekt bauen
+
+  - script: dotnet test --logger "trx;LogFileName=results.trx"
+    workingDirectory: TodoTests
+    displayName: Tests ausführen
+
+  - task: PublishTestResults@2
+    condition: always()
+    inputs:
+      testResultsFormat: VSTest
+      testResultsFiles: 'TodoTests/TestResults/*.trx'
+```
+
+</details>
+
+---
+
+### Variante D – Azure Playwright Service (Bonus)
+
+[**Azure Playwright Service**](https://azure.microsoft.com/en-us/products/playwright-testing) ist ein verwalteter Cloud-Dienst, der Playwright-Tests auf skalierbarer Microsoft-Infrastruktur ausführt – inklusive paralleler Ausführung auf mehreren Browsern ohne eigene Browser-Installation.
+
+**Wann sinnvoll?**
+- Viele Tests sollen parallel laufen (schnellere Gesamtlaufzeit)
+- Kein eigenes Browser-Setup in der CI-Umgebung gewünscht
+- Zentrale Verwaltung von Playwright-Versionen und Artefakten über das Azure-Portal
+
+**Voraussetzung:** Azure-Abonnement + Playwright Testing Workspace im [Azure-Portal](https://portal.azure.com) erstellen.
+
+#### Setup 🟦 TypeScript
+
+```bash
+npm install @azure/microsoft-playwright-testing
+```
+
+Erstelle `playwright.service.config.ts` neben der bestehenden Config:
+
+```ts
+// playwright.service.config.ts
+import { defineConfig } from '@playwright/test';
+import { getServiceConfig, ServiceOS } from '@azure/microsoft-playwright-testing';
+import baseConfig from './playwright.config';
+
+export default defineConfig(
+  getServiceConfig(baseConfig, {
+    os: ServiceOS.LINUX,
+    runId: process.env.BUILD_BUILDID ?? new Date().toISOString(),
+  })
+);
+```
+
+Tests ausführen (Zugangsdaten als Umgebungsvariablen):
+
+```bash
+PLAYWRIGHT_SERVICE_URL=<URL-aus-Azure-Portal> \
+PLAYWRIGHT_SERVICE_ACCESS_TOKEN=<Token-aus-Azure-Portal> \
+npx playwright test --config=playwright.service.config.ts
+```
+
+#### Lösungshinweis 🟦 TypeScript – GitHub Actions
+
+<details>
+<summary>Hinweis anzeigen (TypeScript)</summary>
+
+```yaml
+# .github/workflows/playwright-azure-service.yml
+name: Playwright Tests (Azure Playwright Service)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests über Azure Playwright Service ausführen
+        run: npx playwright test --config=playwright.service.config.ts
+        env:
+          PLAYWRIGHT_SERVICE_URL: ${{ secrets.PLAYWRIGHT_SERVICE_URL }}
+          PLAYWRIGHT_SERVICE_ACCESS_TOKEN: ${{ secrets.PLAYWRIGHT_SERVICE_ACCESS_TOKEN }}
+          CI: true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-azure-service
+          path: playwright-report/
+          retention-days: 7
+```
+
+> 🔑 `PLAYWRIGHT_SERVICE_URL` und `PLAYWRIGHT_SERVICE_ACCESS_TOKEN` als **Repository Secrets** in den GitHub-Einstellungen hinterlegen (`Settings` → `Secrets and variables` → `Actions`).
+
+</details>
+
+#### Setup 🟪 C# (NUnit / MSTest)
+
+```bash
+# NUnit
+dotnet add package Azure.Developer.MicrosoftPlaywrightTesting.NUnit
+
+# MSTest
+dotnet add package Azure.Developer.MicrosoftPlaywrightTesting.MSTest
+```
+
+Erstelle `.runsettings` im Testprojekt:
+
+```xml
+<!-- .runsettings -->
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <PlaywrightService>
+    <Os>linux</Os>
+    <RunId>$(BUILD_BUILDID)</RunId>
+  </PlaywrightService>
+</RunSettings>
+```
+
+Tests ausführen:
+
+```bash
+PLAYWRIGHT_SERVICE_URL=<URL-aus-Azure-Portal> \
+PLAYWRIGHT_SERVICE_ACCESS_TOKEN=<Token-aus-Azure-Portal> \
+dotnet test --settings .runsettings
+```
+
+#### Lösungshinweis 🟪 C# – Azure Pipelines
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+```yaml
+# azure-pipelines.yml (Azure Playwright Service)
+trigger:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '20.x'
+
+  - script: npm ci && npm run dev &
+    displayName: React-App starten
+
+  - script: npx wait-on http://localhost:3000
+    displayName: Warten bis App bereit ist
+
+  - task: UseDotNet@2
+    inputs:
+      version: '8.x'
+
+  - script: dotnet build
+    workingDirectory: TodoTests
+
+  - script: dotnet test --settings .runsettings
+    workingDirectory: TodoTests
+    displayName: Tests über Azure Playwright Service ausführen
+    env:
+      PLAYWRIGHT_SERVICE_URL: $(PLAYWRIGHT_SERVICE_URL)
+      PLAYWRIGHT_SERVICE_ACCESS_TOKEN: $(PLAYWRIGHT_SERVICE_ACCESS_TOKEN)
+      BUILD_BUILDID: $(Build.BuildId)
+
+  - task: PublishTestResults@2
+    condition: always()
+    inputs:
+      testResultsFormat: VSTest
+      testResultsFiles: 'TodoTests/TestResults/*.trx'
+```
+
+> 🔑 `PLAYWRIGHT_SERVICE_URL` und `PLAYWRIGHT_SERVICE_ACCESS_TOKEN` als **Pipeline-Variablen** in Azure DevOps hinterlegen (`Pipeline` → `Edit` → `Variables`) und als **Secret** markieren.
+
+</details>
+
+#### xUnit + Azure Playwright Service
+
+xUnit wird über das generische Logging-Paket eingebunden:
+
+```bash
+dotnet add package Azure.Developer.MicrosoftPlaywrightTesting.TestLogger
+```
+
+Testausführung mit dem Service-Logger:
+
+```bash
+PLAYWRIGHT_SERVICE_URL=<URL> \
+PLAYWRIGHT_SERVICE_ACCESS_TOKEN=<Token> \
+dotnet test --logger "microsoft-playwright-testing"
+```
+
+---
+
 ## Bonus: Was könnte noch verbessert werden?
 
 Schau dir den Quellcode an und überlege, welche weiteren Tests sinnvoll wären:
@@ -1348,6 +1789,9 @@ Schau dir den Quellcode an und überlege, welche weiteren Tests sinnvoll wären:
 | Trace Viewer | [playwright.dev/docs/trace-viewer](https://playwright.dev/docs/trace-viewer) | [playwright.dev/dotnet/docs/trace-viewer](https://playwright.dev/dotnet/docs/trace-viewer) |
 | VS Code Extension | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=ms-playwright.playwright) | – |
 | Debugging | [playwright.dev/docs/debug](https://playwright.dev/docs/debug) | [playwright.dev/dotnet/docs/debug](https://playwright.dev/dotnet/docs/debug) |
+| Docker Image | [mcr.microsoft.com/playwright](https://mcr.microsoft.com/en-us/product/playwright/about) | [mcr.microsoft.com/playwright/dotnet](https://mcr.microsoft.com/en-us/product/playwright/dotnet/about) |
+| Azure Playwright Service | [learn.microsoft.com/azure/playwright-testing](https://learn.microsoft.com/azure/playwright-testing/quickstart-run-end-to-end-tests) | [learn.microsoft.com/azure/playwright-testing](https://learn.microsoft.com/azure/playwright-testing/quickstart-run-end-to-end-tests?tabs=nunit) |
+| Azure Pipelines | [learn.microsoft.com/azure/devops/pipelines](https://learn.microsoft.com/azure/devops/pipelines/get-started/what-is-azure-pipelines) | [learn.microsoft.com/azure/devops/pipelines](https://learn.microsoft.com/azure/devops/pipelines/get-started/what-is-azure-pipelines) |
 
 ---
 
