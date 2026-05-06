@@ -390,7 +390,160 @@ dotnet test
 
 ---
 
-## Exercise 1 – Erster Test: Seitenaufruf und Titel
+## Methodik: Wie schreibe ich Tests? Code-getrieben vs. Codegen
+
+Playwright-Tests können auf zwei Wegen entstehen. Beide führen zum Ziel – aber mit unterschiedlichen Stärken.
+
+| | Code-getrieben ✍️ | Codegen 🎥 |
+|---|---|---|
+| **Wie** | Test wird von Hand als Code geschrieben | Interaktionen im Browser aufzeichnen → Code wird generiert |
+| **Einstiegshürde** | Höher – erfordert API-Kenntnisse | Niedrig – keine Vorkenntnisse nötig |
+| **Code-Qualität** | Direkt wartbar, semantisch, präzise | Oft verbose, fragile Selektoren, braucht Nacharbeit |
+| **Lerneffekt** | Hoch – man versteht die API aktiv | Gering – man klickt, liest ab |
+| **Empfehlung Trainer** | ⭐ **Bevorzugt** | Als Einstieg oder Locator-Hilfe |
+
+> 🎯 **Trainerempfehlung:** Schreibe Tests grundsätzlich code-getrieben. Codegen ist ein nützliches Werkzeug, um Locators schnell zu ermitteln oder einen ersten Entwurf zu generieren – aber der Output sollte immer überarbeitet werden.
+
+---
+
+### Ansatz 1 – Code-getrieben ✍️
+
+Tests werden direkt als Code geschrieben. Du entscheidest bewusst, welche Locators du verwendest, und nutzt semantische Selektoren (`getByRole`, `getByLabel`, `getByTestId`), die robuster gegen UI-Änderungen sind als CSS-Selektoren oder XPath.
+
+**Vorgehensweise:**
+1. App im Browser manuell explorieren
+2. Relevante UI-Elemente identifizieren (IDs, Rollen, Test-IDs aus dem Quellcode)
+3. Test in der IDE schreiben
+4. Ausführen und iterieren
+
+**Beispiel – TodoMatic, Titel prüfen:**
+
+```ts
+// TypeScript – direkt geschrieben
+test('Titel ist sichtbar', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 2 })).toContainText('TodoMatic');
+});
+```
+
+```csharp
+// C# – direkt geschrieben
+[Test] // oder [Fact] / [TestMethod]
+public async Task TitelIstSichtbar()
+{
+    await Page.GotoAsync("http://localhost:3000/");
+    await Expect(Page.GetByRole(AriaRole.Heading, new() { Level = 2 }))
+        .ToContainTextAsync("TodoMatic");
+}
+```
+
+---
+
+### Ansatz 2 – Codegen 🎥
+
+Playwright zeichnet Klicks und Eingaben im Browser auf und generiert daraus automatisch Testcode. Gut geeignet, um:
+- den Einstieg zu erleichtern,
+- Locators für unbekannte Elemente schnell herauszufinden,
+- ein erstes Testgerüst zu erzeugen, das danach bereinigt wird.
+
+**🟦 TypeScript – Codegen starten:**
+
+```bash
+# Terminal
+npx playwright codegen http://localhost:3000
+
+# VS Code: Ctrl+Shift+P → "Playwright: Record new"
+```
+
+**🟪 C# – Codegen mit Framework-Target:**
+
+```bash
+# NUnit
+pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000 --target=csharp-nunit
+
+# MSTest
+pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000 --target=csharp-mstest
+
+# Generisches C# (für xUnit manuell anpassen)
+pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000 --target=csharp
+```
+
+> **🎯 Pick-Locator-Tipp:** Im Playwright Inspector kannst du mit dem **🎯 Pick locator**-Button gezielt einzelne Elemente anklicken, um den besten Locator zu ermitteln – ohne einen ganzen Test aufzuzeichnen.
+
+---
+
+### Hands-on: Beide Ansätze im Vergleich
+
+**Aufgabe:** Schreibe denselben Test auf beide Arten und vergleiche das Ergebnis.
+
+**Szenario:** Öffne die App und prüfe, dass der Text „1 task remaining" sichtbar ist.
+
+#### Schritt 1 – Codegen verwenden
+
+Starte Codegen, öffne die App und beobachte, was generiert wird – ohne zu klicken. Kopiere den Code.
+
+Typischer Codegen-Output (TypeScript):
+
+```ts
+// ⚠️ Automatisch generiert – oft zu fragil für echte Tests
+import { test, expect } from '@playwright/test';
+
+test('test', async ({ page }) => {
+  await page.goto('http://localhost:3000/');
+  await expect(page.locator('#list-heading')).toContainText('1 task remaining');
+});
+```
+
+#### Schritt 2 – Code-getrieben schreiben
+
+Schreibe denselben Test von Hand – ohne den Codegen-Output zu kopieren.
+
+<details>
+<summary>Lösungshinweis 🟦 TypeScript</summary>
+
+```ts
+// ✅ Code-getrieben – semantisch, wartbar
+import { test, expect } from '@playwright/test';
+
+test('Startzustand zeigt eine offene Aufgabe', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#list-heading')).toContainText('1 task remaining');
+});
+```
+
+</details>
+
+<details>
+<summary>Lösungshinweis 🟪 C# (NUnit / xUnit / MSTest)</summary>
+
+```csharp
+// ✅ Code-getrieben
+// Attribut: [Test] / [Fact] / [TestMethod]
+public async Task StartzustandZeigtEineOffeneAufgabe()
+{
+    await Page.GotoAsync("http://localhost:3000/");
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+}
+```
+
+</details>
+
+#### Schritt 3 – Vergleich und Reflexion
+
+Betrachte beide Versionen und beantworte folgende Fragen:
+
+| Frage | Codegen | Code-getrieben |
+|-------|---------|----------------|
+| Wie heißt der Test? | `'test'` (generisch) | Beschreibend |
+| Welche URL wird verwendet? | Absolute URL `http://...` | Relativ `'/'` → nutzt `baseURL` |
+| Locator-Strategie | ID-basiert | ID-basiert (hier gleich, aber oft anders) |
+| Lesbarkeit | Mittel | Hoch |
+
+> 💡 Codegen nutzt standardmäßig absolute URLs und manchmal fragile Selektoren wie `nth()` oder komplexe CSS-Pfade. Code-getrieben lässt dich `getByRole`, `getByLabel` und andere semantische Locators wählen, die deutlich robuster sind.
+
+---
+
+
 
 ### Aufgabe
 
@@ -1101,16 +1254,24 @@ Playwright liefert drei leistungsstarke Werkzeuge, die beim Schreiben und Debugg
 
 ---
 
-### Teil A – Codegen: Testcode aufzeichnen
+### Teil A – Codegen als Locator-Hilfe und Refactoring-Übung
+
+> 💡 Die grundlegende Gegenüberstellung von Code-getrieben vs. Codegen wurde bereits im Abschnitt **„Methodik"** (vor Exercise 1) behandelt. Hier geht es um den gezielten Einsatz von Codegen als Werkzeug im Testeentwicklungs-Workflow.
 
 #### Aufgabe
 
-Zeichne mit Codegen einen Test auf, der:
-1. Die App öffnet,
-2. eine neue Aufgabe eingibt und auf „Add" klickt,
-3. den „Delete"-Button anklickt.
-
-Kopiere den generierten Code in eine neue Testdatei und führe ihn aus.
+1. Zeichne mit Codegen folgenden Ablauf auf:
+   - App öffnen
+   - Aufgabe „Codegen-Test" eingeben und auf „Add" klicken  
+     *(Achtung: Geolocation muss im Browser erlaubt sein!)*
+   - Den „Delete"-Button der neuen Aufgabe klicken
+2. Kopiere den generierten Code in `tests/codegen-raw.spec.ts`.
+3. Führe ihn aus – läuft er durch?
+4. **Refaktoriere** ihn anschließend in `tests/codegen-refactored.spec.ts`:
+   - Absolute URLs → relative Pfade (`'/'`)
+   - Fragile Selektoren → semantische Locators (`getByRole`, `getByLabel`, `getByTestId`)
+   - Generischer Testname → beschreibender Name
+   - Geolocation-Mock hinzufügen (ohne den läuft der Test nicht zuverlässig)
 
 #### 🟦 TypeScript – Codegen starten
 
@@ -1123,20 +1284,109 @@ npx playwright codegen http://localhost:3000
 `Ctrl+Shift+P` → `Playwright: Record new` → URL eingeben.
 
 Ein Browserfenster und der **Playwright Inspector** öffnen sich. Alle Klicks und Eingaben werden in Echtzeit als TypeScript-Code angezeigt.  
-Klicke auf 📋 **Copy**, um den Code in die Zwischenablage zu kopieren.
+Klicke auf 📋 **Copy**, um den Code zu übernehmen.
 
-> **Tipp:** Mit dem **Pick locator**-Button (🎯) kannst du einzelne Elemente anklicken, um deren optimalen Locator zu ermitteln – ohne einen vollständigen Test aufzuzeichnen.
+> **🎯 Pick locator:** Klicke im Inspector auf den Fadenkreuz-Button und dann auf ein Element – der optimale Locator wird direkt angezeigt, ohne einen vollständigen Test aufzuzeichnen.
 
 #### 🟪 C# – Codegen starten
 
 ```bash
+# NUnit
 pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000 --target=csharp-nunit
+
+# MSTest
+pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000 --target=csharp-mstest
+
+# xUnit: generischen Output verwenden und Attribute manuell anpassen
+pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000 --target=csharp
 ```
 
-Der `--target=csharp-nunit`-Parameter erzeugt direkt NUnit-kompatiblen C#-Code.
+#### Lösungshinweis – Typischer Codegen-Output vs. refaktorierte Version
 
-**Alternativ aus Visual Studio:**  
-Setze `PWDEBUG=console` als Umgebungsvariable und starte einen Test – die Playwright-Inspector-UI öffnet sich automatisch.
+<details>
+<summary>Vergleich anzeigen (TypeScript)</summary>
+
+**Codegen-Output (typisch, unbereinigt):**
+```ts
+// tests/codegen-raw.spec.ts
+import { test, expect } from '@playwright/test';
+
+test('test', async ({ page }) => {
+  await page.goto('http://localhost:3000/');
+  await page.locator('#new-todo-input').click();
+  await page.locator('#new-todo-input').fill('Codegen-Test');
+  await page.locator('#myUniqueID').click();
+  await page.locator('li').filter({ hasText: 'Codegen-Test' })
+    .getByRole('button', { name: 'Delete' }).click();
+});
+```
+
+Probleme: absoluter URL, kein Geolocation-Mock, generischer Testname, kein `expect`.
+
+**Refaktoriert (code-getrieben):**
+```ts
+// tests/codegen-refactored.spec.ts
+import { test, expect } from '@playwright/test';
+
+test('Aufgabe hinzufügen und wieder löschen', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 49.637, longitude: 6.901 });
+
+  await page.goto('/');
+  await page.locator('#new-todo-input').fill('Codegen-Test');
+  await page.locator('#myUniqueID').click();
+
+  await expect(page.getByText('Codegen-Test')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Delete' }).click();
+
+  await expect(page.getByText('Codegen-Test')).not.toBeVisible();
+});
+```
+
+</details>
+
+<details>
+<summary>Vergleich anzeigen (C# – NUnit)</summary>
+
+**Codegen-Output (typisch):**
+```csharp
+[Test]
+public async Task Test()
+{
+    await Page.GotoAsync("http://localhost:3000/");
+    await Page.Locator("#new-todo-input").ClickAsync();
+    await Page.Locator("#new-todo-input").FillAsync("Codegen-Test");
+    await Page.Locator("#myUniqueID").ClickAsync();
+    await Page.Locator("li").Filter(new() { HasText = "Codegen-Test" })
+        .GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+}
+```
+
+**Refaktoriert:**
+```csharp
+public override BrowserNewContextOptions ContextOptions() => new()
+{
+    Permissions = new[] { "geolocation" },
+    Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+};
+
+[Test]
+public async Task AufgabeHinzufuegenUndLoeschen()
+{
+    await Page.GotoAsync("http://localhost:3000/");
+    await Page.Locator("#new-todo-input").FillAsync("Codegen-Test");
+    await Page.Locator("#myUniqueID").ClickAsync();
+
+    await Expect(Page.GetByText("Codegen-Test")).ToBeVisibleAsync();
+
+    await Page.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+
+    await Expect(Page.GetByText("Codegen-Test")).Not.ToBeVisibleAsync();
+}
+```
+
+</details>
 
 ---
 
