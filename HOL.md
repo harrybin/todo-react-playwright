@@ -8,7 +8,10 @@
 
 > Jede Übung enthält Lösungshinweise für **zwei Sprachen** und **zwei IDEs** – wähle jeweils die für dich passende:
 > - 🟦 **TypeScript / JavaScript** (Node.js + `@playwright/test`) → IDE: **Visual Studio Code**
-> - 🟪 **C# / .NET** (`Microsoft.Playwright.NUnit`) → IDE: **Visual Studio**
+> - 🟪 **C# / .NET** → IDE: **Visual Studio** – wähle dein Test-Framework:
+>   - **NUnit** (`Microsoft.Playwright.NUnit`)
+>   - **xUnit** (`Microsoft.Playwright.Xunit`)
+>   - **MSTest** (`Microsoft.Playwright.MSTest`)
 
 ---
 
@@ -42,12 +45,31 @@ cd todo-react-playwright
 npm install && npm run dev
 ```
 
-Lege ein separates Testprojekt an (z. B. neben dem Repo-Ordner):
+Lege ein separates Testprojekt an – wähle dein Framework:
 
+**NUnit**
 ```bash
 dotnet new nunit -n TodoTests
 cd TodoTests
 dotnet add package Microsoft.Playwright.NUnit
+dotnet build
+pwsh bin/Debug/net8.0/playwright.ps1 install
+```
+
+**xUnit**
+```bash
+dotnet new xunit -n TodoTests
+cd TodoTests
+dotnet add package Microsoft.Playwright.Xunit
+dotnet build
+pwsh bin/Debug/net8.0/playwright.ps1 install
+```
+
+**MSTest**
+```bash
+dotnet new mstest -n TodoTests
+cd TodoTests
+dotnet add package Microsoft.Playwright.MSTest
 dotnet build
 pwsh bin/Debug/net8.0/playwright.ps1 install
 ```
@@ -93,11 +115,15 @@ Der Browser öffnet sich im *Slow-Motion-Modus* und hält am Breakpoint an.
 **Voraussetzungen:**
 
 - Visual Studio 2022 (Version 17.0+) mit Workload **.NET desktop development**
-- NuGet-Paket `Microsoft.Playwright.NUnit` (bereits im Testprojekt vorhanden)
+- Je nach Framework das passende NuGet-Paket im Testprojekt:
 
-**Test Explorer öffnen:**  
-`Test` → `Test Explorer` (`Ctrl+E, T`)  
-Alle NUnit-Tests werden automatisch erkannt. Klicke auf ▶️ zum Ausführen oder auf 🐛 zum Debuggen.
+| Framework | NuGet-Paket |
+|-----------|-------------|
+| NUnit | `Microsoft.Playwright.NUnit` |
+| xUnit | `Microsoft.Playwright.Xunit` |
+| MSTest | `Microsoft.Playwright.MSTest` |
+
+Alle drei funktionieren gleich im **Test Explorer** (`Test` → `Test Explorer`, `Ctrl+E, T`).
 
 **Breakpoints setzen:**  
 Klicke links neben eine Zeile im Testcode → roter Punkt erscheint.  
@@ -190,9 +216,19 @@ npm test
 
 ### 🟪 C# / .NET
 
-Die App läuft bereits auf `http://localhost:3000`. Jeder Test erbt von `PageTest` und setzt die Basis-URL in einer `[SetUp]`-Methode oder über `BrowserNewContextOptions`.
+Die App läuft bereits auf `http://localhost:3000`. Alle drei Frameworks nutzen die gleiche `PageTest`-Basisklasse aus dem jeweiligen Playwright-Paket – nur die Attribute unterscheiden sich.
 
-Lege `TodoTests.cs` an:
+**Schnellübersicht der Framework-Attribute:**
+
+| | NUnit | xUnit | MSTest |
+|---|---|---|---|
+| Klassen-Attribut | `[TestFixture]` | *(keines)* | `[TestClass]` |
+| Test-Attribut | `[Test]` | `[Fact]` | `[TestMethod]` |
+| Setup | `[SetUp]` | Konstruktor / `InitializeAsync` | `[TestInitialize]` |
+| Teardown | `[TearDown]` | `DisposeAsync` | `[TestCleanup]` |
+| Basisklasse | `Microsoft.Playwright.NUnit.PageTest` | `Microsoft.Playwright.Xunit.PageTest` | `Microsoft.Playwright.MSTest.PageTest` |
+
+**NUnit** – Beispiel-Gerüst:
 
 ```csharp
 using Microsoft.Playwright.NUnit;
@@ -204,10 +240,37 @@ namespace TodoTests;
 public class AppTests : PageTest
 {
     [SetUp]
-    public async Task SetUp()
-    {
-        await Page.GotoAsync("http://localhost:3000/");
-    }
+    public async Task SetUp() => await Page.GotoAsync("http://localhost:3000/");
+}
+```
+
+**xUnit** – Beispiel-Gerüst:
+
+```csharp
+using Microsoft.Playwright.Xunit;
+
+namespace TodoTests;
+
+public class AppTests : PageTest
+{
+    public AppTests() { /* xUnit konstruiert die Klasse vor jedem Test */ }
+
+    // Kein [Fact] auf Klassenebene nötig; Page ist per Basisklasse verfügbar
+}
+```
+
+**MSTest** – Beispiel-Gerüst:
+
+```csharp
+using Microsoft.Playwright.MSTest;
+
+namespace TodoTests;
+
+[TestClass]
+public class AppTests : PageTest
+{
+    [TestInitialize]
+    public async Task SetUp() => await Page.GotoAsync("http://localhost:3000/");
 }
 ```
 
@@ -215,7 +278,7 @@ public class AppTests : PageTest
 dotnet test
 ```
 
-> ℹ️ Die App muss **manuell gestartet** sein (`npm run dev`), da es kein eingebautes `webServer`-Konzept gibt. Alternativ lässt sich der Start im `[OneTimeSetUp]` per `Process.Start` automatisieren.
+> ℹ️ Die App muss **manuell gestartet** sein (`npm run dev`), da es kein eingebautes `webServer`-Konzept gibt.
 
 ---
 
@@ -248,13 +311,34 @@ test('Seite zeigt den Titel TodoMatic', async ({ page }) => {
 ### Lösungshinweis 🟪 C#
 
 <details>
-<summary>Hinweis anzeigen (C#)</summary>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
 
+> Die Playwright-API-Aufrufe (`Expect`, `Page.Locator`, …) sind in allen drei Frameworks **identisch**. Nur die Test-Infrastruktur-Attribute unterscheiden sich.
+
+**NUnit**
 ```csharp
 [Test]
 public async Task SeiteZeigtTitelTodoMatic()
 {
-    // SetUp hat bereits goto aufgerufen
+    await Expect(Page.Locator("h2")).ToContainTextAsync("TodoMatic");
+}
+```
+
+**xUnit**
+```csharp
+[Fact]
+public async Task SeiteZeigtTitelTodoMatic()
+{
+    await Page.GotoAsync("http://localhost:3000/");
+    await Expect(Page.Locator("h2")).ToContainTextAsync("TodoMatic");
+}
+```
+
+**MSTest**
+```csharp
+[TestMethod]
+public async Task SeiteZeigtTitelTodoMatic()
+{
     await Expect(Page.Locator("h2")).ToContainTextAsync("TodoMatic");
 }
 ```
@@ -302,29 +386,60 @@ test('Neue Aufgabe hinzufügen', async ({ page, context }) => {
 ### Lösungshinweis 🟪 C#
 
 <details>
-<summary>Hinweis anzeigen (C#)</summary>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
 
-In C# wird der Browser-Kontext mit Geolocation-Optionen neu erstellt. Überschreibe dazu `NewContext`:
+In allen drei Frameworks wird Geolocation über `ContextOptions()` gesetzt – diese Methode ist in `PageTest` überschreibbar.
 
+**NUnit**
 ```csharp
-// In der Testklasse: Geolocation aktivieren
-public override BrowserNewContextOptions ContextOptions()
+public override BrowserNewContextOptions ContextOptions() => new()
 {
-    return new BrowserNewContextOptions
-    {
-        Permissions = new[] { "geolocation" },
-        Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
-    };
-}
+    Permissions = new[] { "geolocation" },
+    Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+};
 
 [Test]
 public async Task NeueAufgabeHinzufuegen()
 {
     await Page.GotoAsync("http://localhost:3000/");
-
     await Page.Locator("#new-todo-input").FillAsync("Playwright lernen");
     await Page.Locator("#myUniqueID").ClickAsync();
+    await Expect(Page.GetByText("Playwright lernen")).ToBeVisibleAsync();
+}
+```
 
+**xUnit**
+```csharp
+public override BrowserNewContextOptions ContextOptions() => new()
+{
+    Permissions = new[] { "geolocation" },
+    Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+};
+
+[Fact]
+public async Task NeueAufgabeHinzufuegen()
+{
+    await Page.GotoAsync("http://localhost:3000/");
+    await Page.Locator("#new-todo-input").FillAsync("Playwright lernen");
+    await Page.Locator("#myUniqueID").ClickAsync();
+    await Expect(Page.GetByText("Playwright lernen")).ToBeVisibleAsync();
+}
+```
+
+**MSTest**
+```csharp
+public override BrowserNewContextOptions ContextOptions() => new()
+{
+    Permissions = new[] { "geolocation" },
+    Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+};
+
+[TestMethod]
+public async Task NeueAufgabeHinzufuegen()
+{
+    await Page.GotoAsync("http://localhost:3000/");
+    await Page.Locator("#new-todo-input").FillAsync("Playwright lernen");
+    await Page.Locator("#myUniqueID").ClickAsync();
     await Expect(Page.GetByText("Playwright lernen")).ToBeVisibleAsync();
 }
 ```
@@ -364,10 +479,14 @@ test('Aufgabe als erledigt markieren', async ({ page }) => {
 ### Lösungshinweis 🟪 C#
 
 <details>
-<summary>Hinweis anzeigen (C#)</summary>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
+
+> Die Playwright-API-Zeilen sind für alle Frameworks gleich – tausche nur das Attribut aus.
+
+**NUnit:** `[Test]` &nbsp;|&nbsp; **xUnit:** `[Fact]` &nbsp;|&nbsp; **MSTest:** `[TestMethod]`
 
 ```csharp
-[Test]
+// Attribut je nach Framework: [Test] / [Fact] / [TestMethod]
 public async Task AufgabeAlsErledigtMarkieren()
 {
     var checkbox = Page.GetByRole(AriaRole.Checkbox);
@@ -418,10 +537,11 @@ test('Filter funktionieren korrekt', async ({ page }) => {
 ### Lösungshinweis 🟪 C#
 
 <details>
-<summary>Hinweis anzeigen (C#)</summary>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
+
+> Tausche nur das Attribut aus: `[Test]` / `[Fact]` / `[TestMethod]`
 
 ```csharp
-[Test]
 public async Task FilterFunktionierenKorrekt()
 {
     // All ist standardmäßig aktiv
@@ -482,10 +602,11 @@ test('Aufgabe bearbeiten', async ({ page }) => {
 ### Lösungshinweis 🟪 C#
 
 <details>
-<summary>Hinweis anzeigen (C#)</summary>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
+
+> Tausche nur das Attribut aus: `[Test]` / `[Fact]` / `[TestMethod]`
 
 ```csharp
-[Test]
 public async Task AufgabeBearbeiten()
 {
     await Page.GetByRole(AriaRole.Button, new() { Name = "Edit" }).ClickAsync();
@@ -532,10 +653,11 @@ test('Aufgabe löschen', async ({ page }) => {
 ### Lösungshinweis 🟪 C#
 
 <details>
-<summary>Hinweis anzeigen (C#)</summary>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
+
+> Tausche nur das Attribut aus: `[Test]` / `[Fact]` / `[TestMethod]`
 
 ```csharp
-[Test]
 public async Task AufgabeLoeschen()
 {
     await Page.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
@@ -602,10 +724,11 @@ test('Remote Tasks laden mit Mock', async ({ page }) => {
 ### Lösungshinweis 🟪 C#
 
 <details>
-<summary>Hinweis anzeigen (C#)</summary>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
+
+> Tausche nur das Attribut aus: `[Test]` / `[Fact]` / `[TestMethod]`
 
 ```csharp
-[Test]
 public async Task RemoteTasksLadenMitMock()
 {
     var mockJson = """
@@ -655,7 +778,7 @@ export class TodoPage {
 }
 ```
 
-**C#:**
+**C# (framework-unabhängig – die Page-Klasse selbst kennt keine Test-Attribute):**
 ```csharp
 public class TodoPage(IPage page)
 {
@@ -732,9 +855,9 @@ test('POM: Aufgabe hinzufügen und löschen', async ({ page, context }) => {
 ### Lösungshinweis 🟪 C#
 
 <details>
-<summary>Hinweis anzeigen (C#)</summary>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
 
-**`Pages/TodoPage.cs`**
+**`Pages/TodoPage.cs`** – framework-unabhängig:
 
 ```csharp
 using Microsoft.Playwright;
@@ -762,7 +885,7 @@ public class TodoPage(IPage page)
 }
 ```
 
-**`PomTests.cs`**
+**`PomTests.cs` – NUnit**
 
 ```csharp
 using Microsoft.Playwright.NUnit;
@@ -786,11 +909,67 @@ public class PomTests : PageTest
         var todoPage = new TodoPage(Page);
         await todoPage.GotoAsync();
         await todoPage.AddTaskAsync("POM-Aufgabe");
-
         await Expect(Page.GetByText("POM-Aufgabe")).ToBeVisibleAsync();
-
         await todoPage.DeleteFirstTaskAsync();
+        await Expect(Page.GetByText("POM-Aufgabe")).Not.ToBeVisibleAsync();
+    }
+}
+```
 
+**`PomTests.cs` – xUnit**
+
+```csharp
+using Microsoft.Playwright.Xunit;
+using TodoTests.Pages;
+
+namespace TodoTests;
+
+public class PomTests : PageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        Permissions = new[] { "geolocation" },
+        Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+    };
+
+    [Fact]
+    public async Task PomAufgabeHinzufuegenUndLoeschen()
+    {
+        var todoPage = new TodoPage(Page);
+        await todoPage.GotoAsync();
+        await todoPage.AddTaskAsync("POM-Aufgabe");
+        await Expect(Page.GetByText("POM-Aufgabe")).ToBeVisibleAsync();
+        await todoPage.DeleteFirstTaskAsync();
+        await Expect(Page.GetByText("POM-Aufgabe")).Not.ToBeVisibleAsync();
+    }
+}
+```
+
+**`PomTests.cs` – MSTest**
+
+```csharp
+using Microsoft.Playwright.MSTest;
+using TodoTests.Pages;
+
+namespace TodoTests;
+
+[TestClass]
+public class PomTests : PageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        Permissions = new[] { "geolocation" },
+        Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+    };
+
+    [TestMethod]
+    public async Task PomAufgabeHinzufuegenUndLoeschen()
+    {
+        var todoPage = new TodoPage(Page);
+        await todoPage.GotoAsync();
+        await todoPage.AddTaskAsync("POM-Aufgabe");
+        await Expect(Page.GetByText("POM-Aufgabe")).ToBeVisibleAsync();
+        await todoPage.DeleteFirstTaskAsync();
         await Expect(Page.GetByText("POM-Aufgabe")).Not.ToBeVisibleAsync();
     }
 }
