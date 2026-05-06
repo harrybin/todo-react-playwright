@@ -535,6 +535,8 @@ test("smoke test – codegen", async ({ page }) => {
 
 **Ziel:** Grundstruktur eines Playwright-Tests verstehen. Prüfe, ob die Seite korrekt lädt und alle wichtigen UI-Elemente sichtbar sind.
 
+> 📚 **Docs:** [Writing Tests (TS)](https://playwright.dev/docs/writing-tests) · [Writing Tests (.NET)](https://playwright.dev/dotnet/docs/writing-tests) · [Locators](https://playwright.dev/docs/locators) · [Assertions](https://playwright.dev/docs/test-assertions) · [page.goto()](https://playwright.dev/docs/api/class-page#page-goto)
+
 **Aufgabe:**
 
 Schreibe den Test **code-driven** (ohne Codegen):
@@ -685,6 +687,8 @@ dotnet test --filter "FullyQualifiedName~SmokeTests"
 ## Exercise 2: Geolocation mocken und Aufgabe hinzufügen
 
 **Ziel:** Browser-APIs mocken. Die App ruft `navigator.geolocation.getCurrentPosition` beim Hinzufügen auf – ohne Mock passiert nichts.
+
+> 📚 **Docs:** [Emulation – Geolocation (TS)](https://playwright.dev/docs/emulation#geolocation) · [Emulation – Geolocation (.NET)](https://playwright.dev/dotnet/docs/emulation#geolocation) · [Permissions](https://playwright.dev/docs/emulation#permissions) · [test.use() / Fixtures](https://playwright.dev/docs/test-fixtures)
 
 **Aufgabe:**
 
