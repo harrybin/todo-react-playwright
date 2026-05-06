@@ -2796,107 +2796,283 @@ docker compose -f docker-compose.test.yml down
 
 ## Exercise 13 (Bonus): Azure Playwright Testing Service
 
-**Ziel:** Tests auf einer Azure-verwalteten Browser-Farm ausführen – skalierbar, ohne eigene Browser-Infrastruktur. Das Enterprise-Muster aus den [PlaywrightDemos ab IT-Tage 2025](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/AzurePlaywrightTests_BastaSpring2026.cs).
+**Ziel:** Tests auf einer Azure-verwalteten Browser-Farm ausführen – skalierbar, ohne eigene Browser-Infrastruktur.
 
-**Voraussetzungen:** Azure-Abonnement, Playwright Testing Workspace im Azure Portal erstellt.
+> 📚 **Offizielle Dokumentation:**  
+> [Azure Playwright Testing – Übersicht](https://learn.microsoft.com/azure/playwright-testing/overview-what-is-microsoft-playwright-testing) · [Quickstart TypeScript](https://learn.microsoft.com/azure/playwright-testing/quickstart-run-end-to-end-tests) · [Quickstart .NET](https://learn.microsoft.com/azure/playwright-testing/quickstart-run-end-to-end-tests?tabs=playwrightdotnet) · [Service-Konfiguration](https://learn.microsoft.com/azure/playwright-testing/how-to-manage-playwright-workspace) · [Reporting & Portal](https://learn.microsoft.com/azure/playwright-testing/how-to-use-reporting-feature) · [Sharding & Parallelität](https://learn.microsoft.com/azure/playwright-testing/concept-determine-optimal-configuration) · [GitHub Actions Integration](https://learn.microsoft.com/azure/playwright-testing/quickstart-automate-end-to-end-testing) · [PlaywrightDemos Referenzimplementierung](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/AzurePlaywrightTests_BastaSpring2026.cs)
 
-<details>
-<summary>💡 TypeScript – Azure Playwright Testing Service</summary>
+**Was ist der Azure Playwright Testing Service?**
+
+| Aspekt | Lokale Tests / Self-hosted CI | Azure Playwright Testing Service |
+|---|---|---|
+| Browser-Installation | Manuell (`--with-deps`) auf jedem Agent | ✅ Vollständig verwaltet – keine Browser auf dem Agent nötig |
+| Parallelität | Limitiert durch Agent-CPU/RAM | ✅ Bis zu 50 parallele Browser in Azure-Containern |
+| Ergebnisse | Lokaler HTML-Report | ✅ Zentrales Dashboard im Azure Portal mit Trend-Analyse |
+| Traces | Lokales Artefakt herunterladen | ✅ Traces direkt im Azure Portal browsern |
+| Kosten | Agent-Infrastruktur | Pay-per-use (Browser-Minuten) |
+
+**Voraussetzungen:**
+
+1. **Azure-Abonnement** – [kostenloses Konto erstellen](https://azure.microsoft.com/free/) oder bestehendes nutzen
+2. **Azure Playwright Testing Workspace** im Portal erstellt (Schritt 1 unten)
+3. **Access Token** generiert (Schritt 2 unten)
+
+---
+
+### Schritt 1: Workspace im Azure Portal erstellen
+
+1. Öffne das [Azure Portal](https://portal.azure.com) und suche nach **"Playwright Testing"**
+2. Klicke **+ Create** und fülle aus:
+   - **Subscription:** dein Azure-Abonnement
+   - **Resource group:** neu oder bestehend (z. B. `rg-playwright-testing`)
+   - **Name:** eindeutiger Workspace-Name (z. B. `pw-testing-demo`)
+   - **Region:** wähle eine Region nahe deiner CI-Infrastruktur (z. B. `West Europe`)
+3. Klicke **Review + Create** → **Create**
+4. Nach der Bereitstellung: navigiere zum Workspace, öffne **Settings → Access tokens**
+5. Klicke **+ Generate new token** und notiere:
+   - Den **Service URL** (Format: `wss://westeurope.api.playwright.microsoft.com/accounts/<ID>/...`)
+   - Den **Access Token**
+
+> 💡 **Sicherheitshinweis:** Speichere Token niemals im Code. Nutze GitHub Actions Secrets (`Settings → Secrets → Actions`) oder Azure Pipelines Variable Groups.
+
+---
+
+### Schritt 2: Umgebungsvariablen konfigurieren
 
 ```bash
+# Lokal: in ~/.bashrc / ~/.zshrc eintragen oder als Shell-Session-Variablen setzen
+export PLAYWRIGHT_SERVICE_URL="wss://westeurope.api.playwright.microsoft.com/accounts/<ACCOUNT_ID>/authorize/accessToken"
+export PLAYWRIGHT_SERVICE_ACCESS_TOKEN="<dein-token>"
+```
+
+In GitHub Actions als Secrets hinterlegen:
+
+```yaml
+# In Repository Settings → Secrets → New repository secret:
+# Name: PLAYWRIGHT_SERVICE_URL
+# Name: PLAYWRIGHT_SERVICE_ACCESS_TOKEN
+```
+
+> 📚 Siehe [Access Token verwalten](https://learn.microsoft.com/azure/playwright-testing/how-to-manage-access-tokens) und [GitHub Secrets](https://docs.github.com/actions/security-guides/encrypted-secrets)
+
+---
+
+<details>
+<summary>💡 TypeScript – Azure Playwright Testing Service (Schritt-für-Schritt)</summary>
+
+#### Schritt 3a: Paket installieren
+
+```bash
+# @azure/microsoft-playwright-testing: SDK für den Azure Playwright Testing Service
+# --save-dev: nur für Entwicklung/Tests, nicht für Produktions-Bundle
 npm install --save-dev @azure/microsoft-playwright-testing
 ```
 
-`playwright.service.config.ts`:
+> 📚 [NPM-Paket](https://www.npmjs.com/package/@azure/microsoft-playwright-testing) · [SDK Changelog](https://github.com/Azure/azure-sdk-for-js/blob/main/sdk/playwright-testing/microsoft-playwright-testing/CHANGELOG.md)
+
+#### Schritt 3b: Service-Konfigurationsdatei erstellen
+
+`playwright.service.config.ts` – **erweitert** die bestehende `playwright.config.ts`, überschreibt sie nicht:
 
 ```typescript
 import { defineConfig } from "@playwright/test";
 import { getServiceConfig, ServiceOS } from "@azure/microsoft-playwright-testing";
 import config from "./playwright.config";
 
+// getServiceConfig() injiziert Connect-URL, Token und Service-spezifische Einstellungen
+// Es übernimmt alle Einstellungen aus config (playwright.config.ts) und überschreibt nur
+// was für den Service nötig ist (z.B. connectOptions, Timeout-Anpassungen)
 export default defineConfig(
   config,
   getServiceConfig(config, {
+    // ServiceOS.LINUX: Browser laufen in Linux-Containern in Azure
+    // ServiceOS.WINDOWS: Alternativ Windows-Container (für Edge-spezifische Tests)
     os: ServiceOS.LINUX,
+    // runId: eindeutige ID für diesen Test-Run → erscheint im Azure Portal Dashboard
+    // BUILD_ID: von CI-System gesetzt (GitHub: GITHUB_RUN_ID, Azure Pipelines: BUILD_BUILDID)
     runId: process.env.BUILD_ID ?? new Date().toISOString(),
   }),
   {
     reporter: [
-      ["list"],
-      ["@azure/microsoft-playwright-testing/reporter"],
+      ["list"],                                          // Lokale Konsolenausgabe
+      ["@azure/microsoft-playwright-testing/reporter"],  // Ergebnisse → Azure Portal
     ],
   }
 );
 ```
 
-```bash
-export PLAYWRIGHT_SERVICE_URL="wss://eastus.api.playwright.microsoft.com/accounts/<ID>/authorize/accessToken"
-export PLAYWRIGHT_SERVICE_ACCESS_TOKEN="<token>"
+> 📚 [`getServiceConfig` API-Referenz](https://learn.microsoft.com/azure/playwright-testing/quickstart-run-end-to-end-tests#create-playwright-service-configuration-file) · [ServiceOS Optionen](https://learn.microsoft.com/azure/playwright-testing/concept-determine-optimal-configuration#choose-the-right-os)
 
-# Tests in Azure ausführen
+#### Schritt 3c: Tests ausführen
+
+```bash
+# Sicherstellen, dass die Umgebungsvariablen gesetzt sind (Schritt 2)
+echo $PLAYWRIGHT_SERVICE_URL
+
+# Tests mit Service-Konfiguration ausführen
+# Playwright verbindet sich via WebSocket (wss://) zu Azure-Browsern
 npx playwright test --config=playwright.service.config.ts
 
-# Sharding – 4 parallele Browser in Azure
+# Sharding: 4 parallele Shards in Azure (jeder Shard = eigener Browser-Container)
+# Ideal für große Test-Suiten in CI – deutlich schneller als sequenziell
 npx playwright test --config=playwright.service.config.ts --shard=1/4
+npx playwright test --config=playwright.service.config.ts --shard=2/4
+npx playwright test --config=playwright.service.config.ts --shard=3/4
+npx playwright test --config=playwright.service.config.ts --shard=4/4
+
+# Spezifischen Browser wählen (Chromium, Firefox oder WebKit)
+npx playwright test --config=playwright.service.config.ts --project=chromium
 ```
+
+#### Schritt 3d: In GitHub Actions integrieren
+
+```yaml
+# .github/workflows/playwright-azure.yml
+name: Playwright Tests (Azure Service)
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      # Keine Browser-Installation nötig! Azure stellt sie bereit.
+      # --with-deps entfällt komplett.
+      - name: Run Playwright tests on Azure
+        run: npx playwright test --config=playwright.service.config.ts
+        env:
+          # Secrets aus GitHub Repository Settings → Secrets → Actions
+          PLAYWRIGHT_SERVICE_URL: ${{ secrets.PLAYWRIGHT_SERVICE_URL }}
+          PLAYWRIGHT_SERVICE_ACCESS_TOKEN: ${{ secrets.PLAYWRIGHT_SERVICE_ACCESS_TOKEN }}
+          BUILD_ID: ${{ github.run_id }}  # Eindeutige Run-ID für das Portal-Dashboard
+```
+
+> 💡 **Tipp:** Nach dem Run öffne das [Azure Playwright Testing Portal](https://playwright.microsoft.com/) und navigiere zu **Test Runs** – du siehst alle Runs mit Traces, Screenshots und Fehlerdetails ohne lokalen Download.
 
 </details>
 
 <details>
 <summary>💡 C# / NUnit – Azure Playwright Testing Service (wie in PlaywrightDemos)</summary>
 
+#### Schritt 3a: NuGet-Pakete installieren
+
 ```bash
+# Microsoft.Playwright.NUnit: Basis-Integration (PlaywrightTest-Basisklasse)
 dotnet add package Microsoft.Playwright.NUnit
+
+# Azure.Developer.MicrosoftPlaywrightTesting.NUnit: Service-Integration
+# Stellt PlaywrightServiceNUnitSetup und PlaywrightServiceTest bereit
 dotnet add package Azure.Developer.MicrosoftPlaywrightTesting.NUnit
 ```
 
-`PlaywrightServiceSetup.cs`:
+> 📚 [NuGet: Azure.Developer.MicrosoftPlaywrightTesting.NUnit](https://www.nuget.org/packages/Azure.Developer.MicrosoftPlaywrightTesting.NUnit) · [Quickstart .NET](https://learn.microsoft.com/azure/playwright-testing/quickstart-run-end-to-end-tests?tabs=playwrightdotnet)
+
+#### Schritt 3b: Service-Setup registrieren
+
+`PlaywrightServiceSetup.cs` – globales Setup, das den Service initialisiert:
 
 ```csharp
 using Azure.Developer.MicrosoftPlaywrightTesting.NUnit;
+
+// Parallelisierung auf Fixture-Ebene aktivieren – Voraussetzung für Service-Sharding
 [assembly: NUnit.Framework.Parallelizable(NUnit.Framework.ParallelScope.Fixtures)]
 
+// PlaywrightServiceNUnitSetup liest PLAYWRIGHT_SERVICE_URL und PLAYWRIGHT_SERVICE_ACCESS_TOKEN
+// aus Umgebungsvariablen und konfiguriert den WebSocket-Connect zu Azure
 [SetUpFixture]
 public class PlaywrightServiceSetup : PlaywrightServiceNUnitSetup { }
 ```
+
+#### Schritt 3c: Tests von PlaywrightServiceTest ableiten
 
 `AzurePlaywrightTests.cs`:
 
 ```csharp
 using Azure.Developer.MicrosoftPlaywrightTesting.NUnit;
+using System.Text.RegularExpressions;
 
+// PlaywrightServiceTest ersetzt die normale PlaywrightTest-Basisklasse
+// Browser, Context und Page werden remote in Azure-Containern erstellt
 [TestFixture]
 public class AzurePlaywrightTests : PlaywrightServiceTest
 {
     public IPage Page { get; private set; } = null!;
 
     [SetUp]
-    public async Task SetUp() => Page = await Context.NewPageAsync();
+    public async Task SetUp()
+    {
+        // Context kommt von PlaywrightServiceTest – bereits mit Azure-Browser verbunden
+        Page = await Context.NewPageAsync();
+    }
 
     [TearDown]
     public async Task TearDown() => await Page.CloseAsync();
 
     [Test]
-    [Category("CICD")]
+    [Category("CICD")]  // Nur Tests mit CICD-Kategorie in CI ausführen
     public async Task AppLoadsOnAzureService()
     {
         await Page.GotoAsync("http://localhost:3000");
         await Assertions.Expect(Page).ToHaveTitleAsync(new Regex("TodoMatic"));
+        // Browser-Info aus Azure-Container loggen
         TestContext.Out.WriteLine($"Browser: {Page.Context.Browser?.BrowserType.Name}");
+        TestContext.Out.WriteLine($"OS: {Environment.OSVersion}");
     }
 }
 ```
 
+#### Schritt 3d: Tests lokal ausführen
+
 ```bash
-export PLAYWRIGHT_SERVICE_URL="wss://eastus.api.playwright.microsoft.com/..."
-export PLAYWRIGHT_SERVICE_ACCESS_TOKEN="<token>"
-dotnet test --filter "TestCategory=CICD"
+# Umgebungsvariablen setzen (Schritt 2) und dann:
+export PLAYWRIGHT_SERVICE_URL="wss://westeurope.api.playwright.microsoft.com/..."
+export PLAYWRIGHT_SERVICE_ACCESS_TOKEN="<dein-token>"
+
+# Alle Tests ausführen
+dotnet test TodoPlaywrightTests/
+
+# Nur CICD-Kategorie (empfohlen für CI)
+dotnet test TodoPlaywrightTests/ --filter "TestCategory=CICD"
+
+# Mit TRX-Ergebnissen (für Azure Pipelines PublishTestResults)
+dotnet test TodoPlaywrightTests/ --filter "TestCategory=CICD" \
+  --logger trx --results-directory TestResults/
 ```
 
-**Vorteile:**
-- Browser laufen in Azure-Containern – keine Browser-Installation im CI-Agent nötig
-- Bis zu 50 parallele Browser ohne eigene Infrastruktur
-- Ergebnisse und Traces direkt im Azure Portal sichtbar
+#### Schritt 3e: In Azure Pipelines integrieren
+
+```yaml
+# azure-pipelines.yml (Erweiterung von Variante B aus Exercise 12)
+- script: >
+    dotnet test TodoPlaywrightTests/
+    --filter "TestCategory=CICD"
+    --logger trx
+    --results-directory $(Agent.TempDirectory)/TestResults
+  displayName: Run Playwright tests on Azure Service
+  # Keine Browser-Installation nötig – Azure übernimmt das
+  env:
+    # Als Secret-Variable in der Pipeline definiert (Library oder Inline als Secret)
+    PLAYWRIGHT_SERVICE_URL: $(PLAYWRIGHT_SERVICE_URL)
+    PLAYWRIGHT_SERVICE_ACCESS_TOKEN: $(PLAYWRIGHT_SERVICE_ACCESS_TOKEN)
+    BUILD_ID: $(Build.BuildId)
+```
+
+> 📚 [Azure Pipelines Service Connection für Playwright](https://learn.microsoft.com/azure/playwright-testing/quickstart-automate-end-to-end-testing?tabs=github-actions-azure-devops)
+
+#### Überblick der Vorteile
+
+| Vorteil | Details |
+|---|---|
+| **Keine Browser-Installation** | Browser laufen in Azure-Containern – weder `--with-deps` noch `playwright.ps1 install` im CI-Agent nötig |
+| **Bis zu 50 parallele Browser** | Sharding über mehrere Browser-Container ohne eigene Infrastruktur skalieren |
+| **Zentrales Reporting** | Ergebnisse, Traces und Screenshots im [Azure Playwright Testing Portal](https://playwright.microsoft.com/) – kein Artefakt-Download nötig |
+| **Trend-Analyse** | Test-Ergebnisse über Zeit im Portal visualisiert – Flakyness-Erkennung eingebaut |
+| **Cross-Browser in Azure** | Chromium, Firefox und WebKit gleichzeitig in Azure ausführen |
 
 </details>
 
