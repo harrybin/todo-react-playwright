@@ -2332,6 +2332,18 @@ public class PomTests : PageTest
 
 **Ziel:** Playwright-Tests in drei verschiedenen Ausführungsumgebungen automatisieren. Wähle die Variante, die zu deiner Infrastruktur passt.
 
+> 📚 **Docs:** [Playwright in CI (Übersicht)](https://playwright.dev/docs/ci) · [GitHub Actions](https://playwright.dev/docs/ci-intro) · [Azure Pipelines](https://playwright.dev/docs/ci#azure-pipelines) · [Docker](https://playwright.dev/docs/docker) · [Playwright-Artefakte in CI](https://playwright.dev/docs/ci#artifacts)
+
+**Hintergrund – Warum CI für Playwright-Tests?**
+
+Lokale Playwright-Tests laufen mit sichtbarem Browser auf deiner Maschine. In CI/CD-Pipelines gibt es keinen Display, kein GUI. Playwright läuft dort **headless** (ohne sichtbares Browser-Fenster). Drei Dinge sind in CI besonders wichtig:
+
+| Problem | Lösung |
+|---|---|
+| Browser nicht installiert | `npx playwright install --with-deps` / `playwright.ps1 install --with-deps` installiert Chromium, Firefox, WebKit + alle System-Abhängigkeiten |
+| App muss laufen | `webServer` in `playwright.config.ts` (TS) startet die App automatisch; bei .NET: App separat starten (`npm run build && npx serve dist &`) |
+| Keine Traces bei Fehler | Artefakte (`playwright-report`, `test-results`) hochladen – dann kannst du den Trace Viewer auf dem Artefakt öffnen |
+
 **Aufgabe:** Implementiere die CI-Pipeline mit einer der drei Varianten (oder alle drei zum Vergleich):
 1. Trigger auf Push und Pull Request auf `main`
 2. App starten, Tests ausführen
@@ -2340,6 +2352,23 @@ public class PomTests : PageTest
 ---
 
 ### Variante A: GitHub Actions
+
+> 📚 **Docs:** [GitHub Actions – Quickstart](https://docs.github.com/actions/writing-workflows/quickstart) · [actions/checkout](https://github.com/actions/checkout) · [actions/setup-node](https://github.com/actions/setup-node) · [actions/upload-artifact](https://github.com/actions/upload-artifact) · [Playwright CI Intro](https://playwright.dev/docs/ci-intro)
+
+**Schlüsselkonzepte:**
+
+| YAML-Element | Bedeutung |
+|---|---|
+| `on: push / pull_request` | Trigger: Pipeline läuft bei jedem Push auf `main` und bei allen Pull Requests |
+| `runs-on: ubuntu-latest` | GitHub-gehosteter Runner (Linux VM mit Ubuntu) – kostenlos für öffentliche Repos |
+| `actions/checkout@v4` | Klont das Repository in den Runner-Workspace |
+| `actions/setup-node@v4` | Installiert Node.js in der angegebenen Version; `cache: npm` beschleunigt Folge-Runs |
+| `npm ci` | Installiert Abhängigkeiten exakt nach `package-lock.json` – reproduzierbarer als `npm install` |
+| `npx playwright install --with-deps` | Lädt Playwright-Browser-Binaries + alle Linux-Systemabhängigkeiten (libglib, libnspr, ...) herunter |
+| `npx playwright test` | Führt alle Tests headless aus; Playwright startet die App via `webServer` in der Config automatisch |
+| `upload-artifact` mit `if: always()` | Report wird auch bei Testfehlern hochgeladen – wichtig für Post-mortem Analyse |
+| `upload-artifact` mit `if: failure()` | Traces und Screenshots nur bei Fehler hochladen spart Speicherplatz |
+| `retention-days` | Wie lange Artefakte aufbewahrt werden (14 Tage für Report, 7 für Debug-Artefakte) |
 
 <details>
 <summary>💡 TypeScript – GitHub Actions</summary>
@@ -2356,19 +2385,35 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # 1. Repo auschecken
       - uses: actions/checkout@v4
+
+      # 2. Node.js installieren (mit npm-Cache für schnellere Folge-Runs)
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
+
+      # 3. Abhängigkeiten exakt nach package-lock.json installieren
       - run: npm ci
+
+      # 4. Playwright-Browser + System-Abhängigkeiten installieren
+      #    --with-deps: installiert auch libglib, libnss, libnspr usw. auf Ubuntu
       - run: npx playwright install --with-deps
+
+      # 5. Tests ausführen (App startet automatisch via webServer in playwright.config.ts)
       - run: npx playwright test
+
+      # 6. HTML-Report immer hochladen (auch bei Fehlern) → im Actions-Tab herunterladbar
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: playwright-report, path: playwright-report/, retention-days: 14 }
+
+      # 7. Test-Artefakte (Traces, Screenshots) nur bei Fehlern hochladen
       - uses: actions/upload-artifact@v4
         if: failure()
         with: { name: test-results, path: test-results/, retention-days: 7 }
 ```
+
+> **💡 Tipp:** Nach einem fehlgeschlagenen Run lade das Artefakt `playwright-report` herunter und öffne `index.html` lokal – du siehst den vollständigen Trace Viewer direkt im Browser.
 
 </details>
 
@@ -2385,21 +2430,39 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # 1. Repo auschecken
       - uses: actions/checkout@v4
+
+      # 2. .NET 8 SDK installieren
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: 8.x }
+
+      # 3. Node.js für die React-App benötigt
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
+
+      # 4. React-App bauen und als statischen Server starten (im Hintergrund &)
+      #    npx serve dist startet einen einfachen HTTP-Server auf Port 3000
       - name: Build and start Todo App
         run: npm ci && npm run build && npx serve dist -p 3000 &
         working-directory: ./todo-react-playwright
+
+      # 5. .NET-Testprojekt bauen
       - run: dotnet build TodoPlaywrightTests/
+
+      # 6. Playwright-Browser via PowerShell-Skript installieren (von dotnet build generiert)
       - run: pwsh TodoPlaywrightTests/bin/Debug/net8.0/playwright.ps1 install --with-deps
+
+      # 7. Tests ausführen – TRX-Format für PublishTestResults kompatibel
       - run: dotnet test TodoPlaywrightTests/ --logger trx --results-directory TestResults/
         env: { PLAYWRIGHT_BASE_URL: "http://localhost:3000" }
+
+      # 8. TRX-Ergebnisse immer hochladen
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: test-results-dotnet, path: TestResults/, retention-days: 14 }
+
+      # 9. Playwright-Artefakte (Traces, Screenshots, Videos) nur bei Fehlern
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -2411,13 +2474,28 @@ jobs:
           retention-days: 7
 ```
 
-**Tipp aus PlaywrightDemos:** Nutze `[TestCategory("CICD")]` (MSTest) / `[Category("CICD")]` (NUnit) / `[Trait("Category","CICD")]` (xUnit), um nur produktionsreife Tests in CI auszuführen: `dotnet test --filter "TestCategory=CICD"`.
+> **Tipp aus PlaywrightDemos:** Nutze `[TestCategory("CICD")]` (MSTest) / `[Category("CICD")]` (NUnit) / `[Trait("Category","CICD")]` (xUnit), um nur produktionsreife Tests in CI auszuführen: `dotnet test --filter "TestCategory=CICD"`.
 
 </details>
 
 ---
 
 ### Variante B: Azure Pipelines
+
+> 📚 **Docs:** [Azure Pipelines – Einstieg](https://learn.microsoft.com/azure/devops/pipelines/get-started/pipelines-get-started) · [YAML-Schema Referenz](https://learn.microsoft.com/azure/devops/pipelines/yaml-schema/) · [PublishTestResults@2](https://learn.microsoft.com/azure/devops/pipelines/tasks/test/publish-test-results) · [PublishPipelineArtifact@1](https://learn.microsoft.com/azure/devops/pipelines/tasks/utility/publish-pipeline-artifact) · [Playwright Azure Pipelines](https://playwright.dev/docs/ci#azure-pipelines)
+
+**Unterschiede zu GitHub Actions:**
+
+| Konzept | GitHub Actions | Azure Pipelines |
+|---|---|---|
+| Trigger | `on: push` | `trigger: [main]` |
+| Runner | `runs-on: ubuntu-latest` | `pool: { vmImage: ubuntu-latest }` |
+| Steps | `- uses:` / `- run:` | `- task:` / `- script:` |
+| Test-Ergebnisse | Artefakt herunterladen | `PublishTestResults@2` – integriert in Azure DevOps UI |
+| Artefakte | `upload-artifact` | `PublishPipelineArtifact@1` |
+| Fehler-Verhalten | `if: failure()` | `condition: failed()` / `continueOnError: true` |
+
+> **`continueOnError: true`** ist bei Tests wichtig: Auch wenn Tests fehlschlagen (Exit-Code ≠ 0), soll die Pipeline weiterlaufen, um Ergebnisse und Artefakte zu veröffentlichen.
 
 <details>
 <summary>💡 TypeScript – Azure Pipelines</summary>
@@ -2432,20 +2510,27 @@ pool:
   vmImage: ubuntu-latest
 
 steps:
+  # 1. Node.js in der gewünschten Version bereitstellen
   - task: NodeTool@0
     inputs: { versionSpec: "20.x" }
     displayName: Install Node.js
 
+  # 2. Abhängigkeiten installieren (npm ci = deterministisch, kein npm install)
   - script: npm ci
     displayName: Install dependencies
 
+  # 3. Browser + System-Abhängigkeiten installieren
   - script: npx playwright install --with-deps
     displayName: Install Playwright browsers
 
+  # 4. Tests mit JUnit-Reporter ausführen (für PublishTestResults kompatibel)
+  #    continueOnError: true → Pipeline bricht nicht ab wenn Tests fehlschlagen
   - script: npx playwright test --reporter=junit,html
     displayName: Run Playwright tests
     continueOnError: true
 
+  # 5. Testergebnisse in Azure DevOps Test-Dashboard veröffentlichen
+  #    → sichtbar unter Pipelines > Tests > Runs
   - task: PublishTestResults@2
     condition: always()
     inputs:
@@ -2454,6 +2539,7 @@ steps:
       mergeTestResults: true
       testRunTitle: Playwright TypeScript Tests
 
+  # 6. HTML-Report als Pipeline-Artefakt speichern
   - task: PublishPipelineArtifact@1
     condition: always()
     inputs:
@@ -2468,6 +2554,8 @@ JUnit-Reporter in `playwright.config.ts` aktivieren:
 reporter: [["html"], ["junit", { outputFile: "test-results/results.xml" }]],
 ```
 
+> **💡 Tipp:** Mit `PublishTestResults@2` erscheinen Testergebnisse direkt in der Azure DevOps Pipeline-UI unter dem Tab **Tests** – inklusive Fehlermeldungen, Dauer und Trend-Diagrammen. Das ist der Hauptvorteil gegenüber GitHub Actions, wo du den Report manuell herunterladen musst.
+
 </details>
 
 <details>
@@ -2481,24 +2569,32 @@ pool:
   vmImage: ubuntu-latest
 
 steps:
+  # 1. .NET 8 SDK bereitstellen
   - task: UseDotNet@2
     inputs: { version: "8.x" }
     displayName: Install .NET 8
 
+  # 2. Node.js für die React-App bereitstellen
   - task: NodeTool@0
     inputs: { versionSpec: "20.x" }
     displayName: Install Node.js
 
+  # 3. React-App bauen und im Hintergrund starten
+  #    workingDirectory: Pfad relativ zum Repo-Root
   - script: npm ci && npm run build && npx serve dist -p 3000 &
     displayName: Build and start Todo App
     workingDirectory: $(System.DefaultWorkingDirectory)/todo-react-playwright
 
+  # 4. .NET Testprojekt kompilieren
   - script: dotnet build TodoPlaywrightTests/
     displayName: Build test project
 
+  # 5. Playwright-Browser via PowerShell-Skript installieren
+  #    Das Skript wird durch dotnet build automatisch in bin/Debug/net8.0/ generiert
   - script: pwsh TodoPlaywrightTests/bin/Debug/net8.0/playwright.ps1 install --with-deps
     displayName: Install Playwright browsers
 
+  # 6. Tests ausführen – TRX für PublishTestResults, Agent.TempDirectory für Berechtigungen
   - script: >
       dotnet test TodoPlaywrightTests/
       --logger trx
@@ -2508,6 +2604,7 @@ steps:
     env:
       PLAYWRIGHT_BASE_URL: http://localhost:3000
 
+  # 7. TRX-Ergebnisse in Azure DevOps Tests-Tab integrieren
   - task: PublishTestResults@2
     condition: always()
     inputs:
@@ -2516,6 +2613,7 @@ steps:
       mergeTestResults: true
       testRunTitle: Playwright .NET Tests
 
+  # 8. Traces bei Fehler als Artefakt speichern → lokal mit Trace Viewer öffnen
   - task: PublishPipelineArtifact@1
     condition: failed()
     inputs:
@@ -2524,13 +2622,37 @@ steps:
       publishLocation: pipeline
 ```
 
+> **💡 Tipp:** `$(Agent.TempDirectory)` und `$(System.DefaultWorkingDirectory)` sind [vordefinierte Azure Pipelines-Variablen](https://learn.microsoft.com/azure/devops/pipelines/build/variables) – immer diesen verwenden statt hardcoded Pfaden, damit die Pipeline auf verschiedenen Agenten funktioniert.
+
 </details>
 
 ---
 
 ### Variante C: Docker-Container
 
-Docker garantiert reproduzierbare, isolierte Testläufe unabhängig vom Host-System. Microsoft stellt offizielle Playwright-Images mit vorinstallierten Browsern bereit.
+> 📚 **Docs:** [Playwright Docker](https://playwright.dev/docs/docker) · [mcr.microsoft.com/playwright](https://mcr.microsoft.com/en-us/product/playwright/about) · [Dockerfile Best Practices](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/) · [Multi-Stage Builds](https://docs.docker.com/build/building/multi-stage/) · [docker compose healthcheck](https://docs.docker.com/compose/how-tos/startup-order/)
+
+**Warum Docker für Playwright-Tests?**
+
+Docker garantiert reproduzierbare, isolierte Testläufe unabhängig vom Host-System. Das klassische Problem *"läuft bei mir, nicht in CI"* entfällt, weil Container exakt dieselbe Umgebung überall mitbringen.
+
+| Vorteil | Erklärung |
+|---|---|
+| **Reproduzierbarkeit** | Gleiche Browser-Version, gleiche System-Bibliotheken auf jedem Host |
+| **Isolation** | Tests beeinflussen sich nicht gegenseitig; kein Zustand auf dem Host |
+| **Offizielles Image** | `mcr.microsoft.com/playwright` enthält Chromium, Firefox, WebKit + alle Abhängigkeiten – kein `--with-deps` nötig |
+| **CI-Integration** | Jeder CI-Dienst (GitHub Actions, Azure Pipelines, Jenkins, ...) kann Docker-Container ausführen |
+
+**Wichtige Konzepte:**
+
+| Konzept | Erklärung |
+|---|---|
+| `FROM mcr.microsoft.com/playwright:vX.Y.Z-jammy` | Offizielles Microsoft-Image mit Ubuntu Jammy (22.04) und Playwright vorinstalliert. Version immer pinnen (z. B. `v1.52.0`) – nie `latest` in Produktion! |
+| `.dockerignore` | Verhindert, dass `node_modules`, `.git` und Reports in den Build-Context kopiert werden → deutlich schnellere Image-Builds |
+| `-v $(pwd)/playwright-report:/app/playwright-report` | Volume-Mount: Artefakte aus dem Container auf den Host-Dateisystem mappen – sonst sind sie nach `docker run --rm` weg |
+| Multi-Stage Build | Stage 1 (SDK) baut die App / Tests; Stage 2 (Runtime) ist schlanker – kein Build-Toolchain im finalen Image |
+| `--add-host=host-gateway:host-gateway` | Erlaubt dem Container, auf `host-gateway` (= Host-IP) zuzugreifen – nötig wenn die App auf dem Host läuft, nicht im Container |
+| `healthcheck` in compose | Stellt sicher, dass der `tests`-Container erst startet, wenn die `app` wirklich HTTP-Anfragen beantwortet |
 
 <details>
 <summary>💡 TypeScript – Dockerfile + Ausführung</summary>
@@ -2538,59 +2660,78 @@ Docker garantiert reproduzierbare, isolierte Testläufe unabhängig vom Host-Sys
 `Dockerfile`:
 
 ```dockerfile
-# Offizielles Playwright-Image – alle Browser vorinstalliert
+# Offizielles Playwright-Image – alle Browser vorinstalliert, keine weitere Installation nötig
+# Version pinnen für Reproduzierbarkeit; "jammy" = Ubuntu 22.04 LTS
 FROM mcr.microsoft.com/playwright:v1.52.0-jammy
+
 WORKDIR /app
+
+# Zuerst nur package.json kopieren → Docker-Layer-Cache: npm ci nur bei Änderungen
 COPY package*.json ./
 RUN npm ci
+
+# Dann erst den restlichen Code kopieren
 COPY . .
+
+# playwright.config.ts muss baseURL auf localhost:3000 zeigen
+# Die App muss separat gestartet werden (kein webServer im Docker-Context)
 CMD ["npx", "playwright", "test"]
 ```
 
-`.dockerignore`:
+`.dockerignore` – verhindert unnötig große Build-Kontexte:
 
 ```
 node_modules
 test-results
 playwright-report
 .git
+*.md
 ```
 
 ```bash
+# Image bauen
 docker build -t todo-playwright-tests .
 
-# Tests ausführen
+# Tests ausführen (headless, Ergebnisse im Container)
 docker run --rm todo-playwright-tests
 
-# Mit spezifischem Browser
+# Mit spezifischem Browser (Umgebungsvariable)
 docker run --rm -e BROWSER=firefox todo-playwright-tests
 
-# Ergebnisse aus Container extrahieren
+# Ergebnisse auf Host-Dateisystem speichern (Volume-Mount)
 docker run --rm \
   -v $(pwd)/test-results:/app/test-results \
   -v $(pwd)/playwright-report:/app/playwright-report \
   todo-playwright-tests
+
+# Report lokal öffnen
+npx playwright show-report playwright-report
 ```
+
+> **💡 Tipp:** Das `mcr.microsoft.com/playwright`-Image enthält keine App – du musst die TodoMatic-App separat starten oder in `playwright.config.ts` einen `webServer`-Eintrag konfigurieren, der die App im Container selbst startet. Alternativ: `docker compose` (siehe unten).
 
 </details>
 
 <details>
 <summary>💡 C# / .NET – Multi-Stage Dockerfile (inspiriert von PlaywrightDemos)</summary>
 
-`Dockerfile`:
-
 ```dockerfile
-# Stage 1: Build
+# ── Stage 1: Build ─────────────────────────────────────────────────────────
+# Vollständiges SDK-Image zum Kompilieren der Tests
 FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
 WORKDIR /app
 COPY . .
+# Nur bauen, nicht testen – Ausführung passiert in Stage 2
 RUN dotnet build TodoPlaywrightTests/
 
-# Stage 2: Test-Ausführung im Playwright-Runtime-Image
-# (Browser + Systemabhängigkeiten bereits enthalten)
+# ── Stage 2: Test-Ausführung ────────────────────────────────────────────────
+# Schlankes Playwright-Runtime-Image (Browser + Systemabhängigkeiten enthalten)
+# Das dotnet/sdk-Image von Stage 1 ist NICHT im finalen Image enthalten → kleineres Image
 FROM mcr.microsoft.com/playwright/dotnet:v1.52.0-jammy AS test
 WORKDIR /app
+# Nur die kompilierten Test-Binaries aus Stage 1 übernehmen
 COPY --from=build /app/TodoPlaywrightTests/bin/Debug/net8.0 .
+# host-gateway wird zur Laufzeit auf die Host-IP aufgelöst (via --add-host)
 ENV PLAYWRIGHT_BASE_URL=http://host-gateway:3000
 ENTRYPOINT ["dotnet", "test", "TodoPlaywrightTests.dll", \
             "--filter", "TestCategory=CICD", \
@@ -2598,9 +2739,12 @@ ENTRYPOINT ["dotnet", "test", "TodoPlaywrightTests.dll", \
 ```
 
 ```bash
+# Image bauen (Stage 1 + Stage 2 werden automatisch hintereinander ausgeführt)
 docker build -t todo-playwright-tests-dotnet .
 
-# App auf Host muss laufen (npm run dev)
+# Voraussetzung: App auf dem Host läuft (npm run dev oder npm run build && npx serve dist)
+# --add-host: Löst "host-gateway" auf die Host-IP auf (Linux: host-gateway = 172.17.0.1)
+# -v: TRX-Ergebnisse auf den Host mappen
 docker run --rm \
   --add-host=host-gateway:host-gateway \
   -e PLAYWRIGHT_BASE_URL=http://host-gateway:3000 \
@@ -2608,31 +2752,43 @@ docker run --rm \
   todo-playwright-tests-dotnet
 ```
 
-**docker compose** – App und Tests zusammen:
+**docker compose** – App und Tests als zusammenhängende Services:
 
 ```yaml
 # docker-compose.test.yml
+# Startet die React-App und die Tests in einer koordinierten Umgebung
 services:
   app:
     build: { context: ./todo-react-playwright }
     ports: ["3000:3000"]
+    # healthcheck: Tests starten erst, wenn die App HTTP 200 zurückgibt
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 5s
       retries: 10
+
   tests:
     build: { context: ./TodoPlaywrightTests }
+    # depends_on mit condition: service_healthy → wartet auf healthcheck
     depends_on:
       app: { condition: service_healthy }
     environment:
+      # Im compose-Netzwerk ist "app" der Hostname des App-Containers
       PLAYWRIGHT_BASE_URL: http://app:3000
     volumes:
       - ./TestResults:/app/TestResults
 ```
 
 ```bash
+# Alles starten, Tests ausführen, Exit-Code von "tests" zurückgeben
+# --exit-code-from tests: Pipeline schlägt fehl wenn Tests fehlschlagen
 docker compose -f docker-compose.test.yml up --exit-code-from tests
+
+# Aufräumen nach dem Run
+docker compose -f docker-compose.test.yml down
 ```
+
+> **💡 Tipp:** `--exit-code-from tests` ist entscheidend für CI: Ohne dieses Flag würde `docker compose up` immer mit Exit-Code 0 enden – die Pipeline wäre immer grün, auch wenn Tests fehlschlagen.
 
 </details>
 
