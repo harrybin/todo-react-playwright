@@ -543,7 +543,7 @@ Betrachte beide Versionen und beantworte folgende Fragen:
 
 ---
 
-
+## Exercise 1 – Erster Test: Seitenaufruf und Titel
 
 ### Aufgabe
 
@@ -1571,7 +1571,300 @@ pwsh bin/Debug/net8.0/playwright.ps1 show-trace trace-AbsichtlichFehlschlagender
 
 ---
 
-## Exercise 10 – CI: Tests in der Pipeline ausführen
+## Exercise 10 – Screenshots und Videoaufzeichnung
+
+Playwright kann Testläufe automatisch per Screenshot und Video dokumentieren – hilfreich beim Debuggen, im CI-Reporting und für visuelle Regressionstests.
+
+### Überblick
+
+| Funktion | Konfigurationsoption | Wann sinnvoll |
+|----------|---------------------|---------------|
+| Screenshot bei Fehler | `screenshot: 'only-on-failure'` | Standard-Debugging |
+| Screenshot immer | `screenshot: 'on'` | Visuelle Dokumentation |
+| Screenshot manuell | `page.screenshot()` im Test | Gezielter Beweis |
+| Visueller Regressionstest | `expect(page).toHaveScreenshot()` | UI-Änderungen erkennen |
+| Video bei Fehler | `video: 'retain-on-failure'` | CI-Fehleranalyse |
+| Video immer | `video: 'on'` | Vollständige Aufzeichnung |
+
+---
+
+### Teil A – Automatische Screenshots und Videos per Konfiguration
+
+#### Aufgabe
+
+Konfiguriere Playwright so, dass:
+1. Bei jedem Testfehler automatisch ein Screenshot gespeichert wird.
+2. Bei jedem Testfehler eine Videoaufzeichnung gespeichert wird.
+
+Schreibe anschließend absichtlich einen fehlschlagenden Test und prüfe, wo die Artefakte landen.
+
+#### Lösungshinweis 🟦 TypeScript
+
+<details>
+<summary>Hinweis anzeigen (TypeScript)</summary>
+
+In `playwright.config.ts`:
+
+```ts
+use: {
+  baseURL: 'http://localhost:3000',
+
+  // Screenshot bei jedem fehlgeschlagenen Test
+  screenshot: 'only-on-failure',
+  // Alternativen: 'on' (immer) | 'off' (nie)
+
+  // Video bei fehlgeschlagenem Test behalten
+  video: 'retain-on-failure',
+  // Alternativen: 'on' (immer) | 'off' (nie) | 'on-first-retry'
+},
+```
+
+Nach einem fehlgeschlagenen Testlauf:
+
+```
+test-results/
+  <testname>/
+    test-failed-1.png     ← Screenshot
+    video.webm            ← Video
+```
+
+Artefakte öffnen:
+```bash
+# HTML-Report enthält Screenshot und Video eingebettet
+npx playwright show-report
+```
+
+</details>
+
+#### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
+
+In C# werden Screenshot und Video direkt im Test oder `[TearDown]` gesteuert.  
+Es gibt keine zentrale `playwright.config`-Entsprechung – nutze stattdessen `LaunchOptions` und Kontext-Optionen.
+
+**Screenshot bei Fehler (NUnit-Beispiel, analog für xUnit/MSTest):**
+
+```csharp
+[TearDown]  // xUnit: DisposeAsync | MSTest: [TestCleanup]
+public async Task TakeScreenshotOnFailure()
+{
+    // NUnit-spezifisch: Status prüfen
+    if (TestContext.CurrentContext.Result.Outcome.Status
+            == NUnit.Framework.Interfaces.TestStatus.Failed)
+    {
+        var screenshotPath =
+            $"screenshot-{TestContext.CurrentContext.Test.Name}.png";
+        await Page.ScreenshotAsync(new() { Path = screenshotPath, FullPage = true });
+        TestContext.AddTestAttachment(screenshotPath, "Failure Screenshot");
+    }
+}
+```
+
+**Video-Aufzeichnung:**
+
+```csharp
+// In ContextOptions() – Video für alle Tests aktivieren
+public override BrowserNewContextOptions ContextOptions() => new()
+{
+    RecordVideoDir = "videos/",
+    RecordVideoSize = new RecordVideoSize { Width = 1280, Height = 720 },
+};
+
+[TearDown]
+public async Task SaveVideo()
+{
+    // Video wird erst beim Schließen der Page finalisiert
+    await Page.CloseAsync();
+    // Die .webm-Datei liegt jetzt in videos/
+}
+```
+
+Video-Pfad nach dem Test:
+```
+videos/
+  <guid>.webm
+```
+
+</details>
+
+---
+
+### Teil B – Screenshot manuell im Test aufnehmen
+
+#### Aufgabe
+
+Nimm an einem definierten Punkt im Test einen gezielten Screenshot auf – z. B. direkt nachdem eine neue Aufgabe hinzugefügt wurde – und speichere ihn mit einem aussagekräftigen Dateinamen.
+
+#### Lösungshinweis 🟦 TypeScript
+
+<details>
+<summary>Hinweis anzeigen (TypeScript)</summary>
+
+```ts
+test('Screenshot nach dem Hinzufügen einer Aufgabe', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 49.637, longitude: 6.901 });
+
+  await page.goto('/');
+  await page.locator('#new-todo-input').fill('Screenshot-Aufgabe');
+  await page.locator('#myUniqueID').click();
+
+  await expect(page.getByText('Screenshot-Aufgabe')).toBeVisible();
+
+  // Gezielter Screenshot – ganzseitig
+  await page.screenshot({
+    path: 'test-results/nach-hinzufuegen.png',
+    fullPage: true,
+  });
+
+  // Alternativ: nur ein Element fotografieren
+  await page.locator('#list-heading').screenshot({
+    path: 'test-results/list-heading.png',
+  });
+});
+```
+
+</details>
+
+#### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
+
+```csharp
+// Attribut: [Test] / [Fact] / [TestMethod]
+public async Task ScreenshotNachHinzufuegen()
+{
+    await Page.GotoAsync("http://localhost:3000/");
+    await Page.Locator("#new-todo-input").FillAsync("Screenshot-Aufgabe");
+    await Page.Locator("#myUniqueID").ClickAsync();
+
+    await Expect(Page.GetByText("Screenshot-Aufgabe")).ToBeVisibleAsync();
+
+    // Ganzseitiger Screenshot
+    await Page.ScreenshotAsync(new()
+    {
+        Path = "nach-hinzufuegen.png",
+        FullPage = true,
+    });
+
+    // Nur ein Element
+    await Page.Locator("#list-heading").ScreenshotAsync(new()
+    {
+        Path = "list-heading.png",
+    });
+}
+```
+
+</details>
+
+---
+
+### Teil C – Visueller Regressionstest mit `toHaveScreenshot`
+
+Playwright kann Screenshots mit einem **gespeicherten Referenz-Screenshot** vergleichen und schlägt fehl, wenn sich die UI verändert hat.
+
+#### Aufgabe
+
+1. Schreibe einen Test, der einen visuellen Snapshot der Seite anlegt.
+2. Führe ihn zweimal aus – beim ersten Lauf wird der Referenz-Screenshot erzeugt, beim zweiten wird verglichen.
+3. Verändere dann etwas in der App (z. B. einen Text in `App.tsx`) und prüfe, ob der Test fehlschlägt.
+4. Aktualisiere den Referenz-Screenshot mit dem Update-Flag.
+
+#### Lösungshinweis 🟦 TypeScript
+
+<details>
+<summary>Hinweis anzeigen (TypeScript)</summary>
+
+```ts
+// tests/visual.spec.ts
+import { test, expect } from '@playwright/test';
+
+test('Visueller Snapshot der Startseite', async ({ page }) => {
+  await page.goto('/');
+
+  // Beim ersten Lauf: Referenz-Screenshot wird erzeugt
+  // Ab dem zweiten Lauf: Vergleich mit Referenz
+  await expect(page).toHaveScreenshot('startseite.png', {
+    maxDiffPixels: 100,   // erlaubte Pixelabweichung
+  });
+});
+
+test('Visueller Snapshot der Todo-Liste', async ({ page }) => {
+  await page.goto('/');
+
+  // Nur einen bestimmten Bereich vergleichen
+  await expect(page.locator('ul.todo-list')).toHaveScreenshot('todo-liste.png');
+});
+```
+
+Referenz-Screenshots liegen in:
+```
+tests/visual.spec.ts-snapshots/
+  startseite-chromium-linux.png
+```
+
+Referenz aktualisieren (nach bewusster UI-Änderung):
+```bash
+npx playwright test --update-snapshots
+```
+
+</details>
+
+#### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
+
+In C# gibt es kein eingebautes `toHaveScreenshot`-Äquivalent. Der übliche Ansatz ist ein manueller Pixel-Vergleich mit einem gespeicherten Referenzbild:
+
+```csharp
+using SixLabors.ImageSharp;         // dotnet add package SixLabors.ImageSharp
+using SixLabors.ImageSharp.PixelFormats;
+
+// Attribut: [Test] / [Fact] / [TestMethod]
+public async Task VisuellerSnapshotStartseite()
+{
+    await Page.GotoAsync("http://localhost:3000/");
+
+    var screenshotBytes = await Page.ScreenshotAsync(new() { FullPage = true });
+    var referenzPfad = "snapshots/startseite-referenz.png";
+
+    if (!File.Exists(referenzPfad))
+    {
+        // Erster Lauf: Referenz speichern
+        Directory.CreateDirectory("snapshots");
+        await File.WriteAllBytesAsync(referenzPfad, screenshotBytes);
+        Assert.Pass("Referenz-Screenshot erstellt – Test erneut ausführen zum Vergleich.");
+        return;
+    }
+
+    // Vergleich
+    using var referenz = Image.Load<Rgba32>(referenzPfad);
+    using var aktuell  = Image.Load<Rgba32>(screenshotBytes);
+
+    Assert.That(aktuell.Width,  Is.EqualTo(referenz.Width),  "Breite unterschiedlich");
+    Assert.That(aktuell.Height, Is.EqualTo(referenz.Height), "Höhe unterschiedlich");
+
+    int abweichung = 0;
+    for (int y = 0; y < referenz.Height; y++)
+        for (int x = 0; x < referenz.Width; x++)
+            if (referenz[x, y] != aktuell[x, y]) abweichung++;
+
+    Assert.That(abweichung, Is.LessThanOrEqualTo(200),
+        $"Zu viele unterschiedliche Pixel: {abweichung}");
+}
+```
+
+> 💡 Für produktiven Einsatz empfiehlt sich eine dedizierte Bibliothek wie **Playwright.Contrib.FluentAssertions** oder **ImageSharp.Compare** für stabilere Bildvergleiche.
+
+</details>
+
+---
+
+## Exercise 11 – CI: Tests in der Pipeline ausführen
 
 Playwright-Tests lassen sich in verschiedenen CI/CD-Umgebungen automatisieren. Diese Übung zeigt **vier Varianten** – wähle die für euren Stack passende.
 
@@ -2129,7 +2422,7 @@ Schau dir den Quellcode an und überlege, welche weiteren Tests sinnvoll wären:
 
 - **Bug in `toggleTaskCompleted`:** Finde den Fehler in `App.tsx` (Zeile ~44). Schreibe einen fehlschlagenden Test, der den Bug beweist, und fixe danach den Code.
 - **Accessibility:** Nutze `@axe-core/playwright` (TS) oder `Deque.AxeCore.Playwright` (C#), um Barrierefreiheitsprobleme automatisch zu erkennen.
-- **Screenshot-Vergleich:** Füge einen visuellen Regressionstest hinzu – `toHaveScreenshot()` (TS) bzw. `Page.ScreenshotAsync` mit Bildvergleich (C#).
+- **Screenshot-Vergleich:** Erweitere Exercise 10 um weitere Seiten-Snapshots und integriere den visuellen Regressionstest in die CI-Pipeline (Exercise 11).
 - **Mehrere Browser:** Konfiguriere `playwright.config.ts` (TS) oder `[BrowserType]`-Attribute (C#), damit Tests in Chromium, Firefox und WebKit laufen.
 
 ---
