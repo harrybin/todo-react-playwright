@@ -6,9 +6,15 @@
 **Stack:** React 19 · TypeScript · Vite · MUI · Playwright  
 **Dauer:** ca. 3–4 Stunden
 
+> Jede Übung enthält Lösungshinweise für **zwei Sprachen** – wähle die für dich passende:
+> - 🟦 **TypeScript / JavaScript** (Node.js + `@playwright/test`)
+> - 🟪 **C# / .NET** (`Microsoft.Playwright.NUnit`)
+
 ---
 
 ## Voraussetzungen
+
+### 🟦 TypeScript / JavaScript
 
 | Werkzeug | Mindestversion |
 |----------|----------------|
@@ -22,6 +28,30 @@ cd todo-react-playwright
 npm install
 ```
 
+### 🟪 C# / .NET
+
+| Werkzeug | Mindestversion |
+|----------|----------------|
+| .NET SDK | 8              |
+| Git      | beliebig       |
+
+```bash
+git clone https://github.com/harrybin/todo-react-playwright.git
+cd todo-react-playwright
+# App starten (bleibt im Hintergrund laufen)
+npm install && npm run dev
+```
+
+Lege ein separates Testprojekt an (z. B. neben dem Repo-Ordner):
+
+```bash
+dotnet new nunit -n TodoTests
+cd TodoTests
+dotnet add package Microsoft.Playwright.NUnit
+dotnet build
+pwsh bin/Debug/net8.0/playwright.ps1 install
+```
+
 ---
 
 ## Überblick über die App
@@ -29,7 +59,7 @@ npm install
 Starte die App und mach dich kurz mit ihr vertraut:
 
 ```bash
-npm run dev
+npm run dev   # http://localhost:3000
 ```
 
 Die **TodoMatic**-App bietet:
@@ -61,6 +91,8 @@ public/
 
 ## Setup: Playwright installieren und konfigurieren
 
+### 🟦 TypeScript / JavaScript
+
 ```bash
 npm init playwright@latest
 ```
@@ -73,18 +105,13 @@ Beantworte die Fragen des Wizard wie folgt (Empfehlung):
 | GitHub Actions Workflow? | `yes` |
 | Browser installieren? | `yes` |
 
-Danach existiert `playwright.config.ts`. Passe die `baseURL` an:
+Passe `playwright.config.ts` an:
 
 ```ts
 // playwright.config.ts
 use: {
   baseURL: 'http://localhost:3000',
 },
-```
-
-Und konfiguriere den `webServer`-Block, damit Playwright die App automatisch startet:
-
-```ts
 webServer: {
   command: 'npm run dev',
   url: 'http://localhost:3000',
@@ -92,13 +119,38 @@ webServer: {
 },
 ```
 
-Teste die Grundkonfiguration:
-
 ```bash
 npm test
 ```
 
-> ℹ️ Die von Playwright generierten Beispiel-Tests kannst du löschen oder behalten – sie stören nicht.
+### 🟪 C# / .NET
+
+Die App läuft bereits auf `http://localhost:3000`. Jeder Test erbt von `PageTest` und setzt die Basis-URL in einer `[SetUp]`-Methode oder über `BrowserNewContextOptions`.
+
+Lege `TodoTests.cs` an:
+
+```csharp
+using Microsoft.Playwright.NUnit;
+
+namespace TodoTests;
+
+[Parallelizable(ParallelScope.Self)]
+[TestFixture]
+public class AppTests : PageTest
+{
+    [SetUp]
+    public async Task SetUp()
+    {
+        await Page.GotoAsync("http://localhost:3000/");
+    }
+}
+```
+
+```bash
+dotnet test
+```
+
+> ℹ️ Die App muss **manuell gestartet** sein (`npm run dev`), da es kein eingebautes `webServer`-Konzept gibt. Alternativ lässt sich der Start im `[OneTimeSetUp]` per `Process.Start` automatisieren.
 
 ---
 
@@ -106,29 +158,40 @@ npm test
 
 ### Aufgabe
 
-Erstelle die Datei `tests/app.spec.ts`.  
 Schreibe einen Test, der:
 
 1. `http://localhost:3000` aufruft,
 2. prüft, dass die Seite den Titel **TodoMatic** (h2) enthält.
 
-### Anforderungen
-
-- Verwende `page.goto('/')`.
-- Verwende einen Playwright-Locator, der auf `h2` zeigt, und prüfe mit `toContainText`.
-
-### Lösungshinweis
+### Lösungshinweis 🟦 TypeScript
 
 <details>
-<summary>Hinweis anzeigen</summary>
+<summary>Hinweis anzeigen (TypeScript)</summary>
 
 ```ts
+// tests/app.spec.ts
 import { test, expect } from '@playwright/test';
 
 test('Seite zeigt den Titel TodoMatic', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('h2')).toContainText('TodoMatic');
 });
+```
+
+</details>
+
+### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+```csharp
+[Test]
+public async Task SeiteZeigtTitelTodoMatic()
+{
+    // SetUp hat bereits goto aufgerufen
+    await Expect(Page.Locator("h2")).ToContainTextAsync("TodoMatic");
+}
 ```
 
 </details>
@@ -143,21 +206,17 @@ Schreibe einen Test, der eine neue Aufgabe hinzufügt und prüft, dass sie in de
 
 > **Hinweis zur Geolocation:** Die `addTask`-Funktion ruft `navigator.geolocation.getCurrentPosition` auf. Ohne Mock bleibt der „Add"-Button ohne Wirkung, weil der Browser die Position verweigert.
 
-### Teilschritte
+### Teilschritte (sprachunabhängig)
 
-1. Mocke die Geolocation **vor** `page.goto('/')`:
-   ```ts
-   await page.context().grantPermissions(['geolocation']);
-   await page.context().setGeolocation({ latitude: 49.637, longitude: 6.901 });
-   ```
-2. Fülle das Eingabefeld (`#new-todo-input`) mit einem Testnamen.
-3. Klicke auf den „Add"-Button (`#myUniqueID`).
-4. Prüfe, dass der Testname irgendwo auf der Seite sichtbar ist.
+1. Geolocation-Permission erteilen und Position setzen, **bevor** die Seite geladen wird.
+2. Eingabefeld (`#new-todo-input`) mit einem Namen befüllen.
+3. „Add"-Button (`#myUniqueID`) klicken.
+4. Prüfen, dass der Name auf der Seite sichtbar ist.
 
-### Lösungshinweis
+### Lösungshinweis 🟦 TypeScript
 
 <details>
-<summary>Hinweis anzeigen</summary>
+<summary>Hinweis anzeigen (TypeScript)</summary>
 
 ```ts
 test('Neue Aufgabe hinzufügen', async ({ page, context }) => {
@@ -175,27 +234,58 @@ test('Neue Aufgabe hinzufügen', async ({ page, context }) => {
 
 </details>
 
+### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+In C# wird der Browser-Kontext mit Geolocation-Optionen neu erstellt. Überschreibe dazu `NewContext`:
+
+```csharp
+// In der Testklasse: Geolocation aktivieren
+public override BrowserNewContextOptions ContextOptions()
+{
+    return new BrowserNewContextOptions
+    {
+        Permissions = new[] { "geolocation" },
+        Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+    };
+}
+
+[Test]
+public async Task NeueAufgabeHinzufuegen()
+{
+    await Page.GotoAsync("http://localhost:3000/");
+
+    await Page.Locator("#new-todo-input").FillAsync("Playwright lernen");
+    await Page.Locator("#myUniqueID").ClickAsync();
+
+    await Expect(Page.GetByText("Playwright lernen")).ToBeVisibleAsync();
+}
+```
+
+</details>
+
 ---
 
 ## Exercise 3 – Aufgabe als erledigt markieren
 
 ### Aufgabe
 
-Markiere die bereits beim Start angezeigte Aufgabe **„test"** als erledigt und prüfe:
+Markiere die beim Start angezeigte Aufgabe **„test"** als erledigt und prüfe:
 
 1. Die Checkbox ist angehakt.
-2. Der Counter-Text oben wechselt (z. B. „0 tasks remaining").
+2. Der Counter-Text lautet **„0 tasks remaining"**.
 
-### Lösungshinweis
+### Lösungshinweis 🟦 TypeScript
 
 <details>
-<summary>Hinweis anzeigen</summary>
+<summary>Hinweis anzeigen (TypeScript)</summary>
 
 ```ts
 test('Aufgabe als erledigt markieren', async ({ page }) => {
   await page.goto('/');
 
-  // Checkbox anhand des zugehörigen Textes finden
   const checkbox = page.getByRole('checkbox');
   await checkbox.check();
 
@@ -206,41 +296,84 @@ test('Aufgabe als erledigt markieren', async ({ page }) => {
 
 </details>
 
+### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+```csharp
+[Test]
+public async Task AufgabeAlsErledigtMarkieren()
+{
+    var checkbox = Page.GetByRole(AriaRole.Checkbox);
+    await checkbox.CheckAsync();
+
+    await Expect(checkbox).ToBeCheckedAsync();
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("0 tasks remaining");
+}
+```
+
+</details>
+
 ---
 
 ## Exercise 4 – Filter testen
 
 ### Aufgabe
 
-Nutze die Filter-Buttons (data-testid: `testID-All`, `testID-Active`, `testID-Completed`), um folgendes Verhalten zu testen:
+Nutze die Filter-Buttons (data-testid: `testID-All`, `testID-Active`, `testID-Completed`):
 
 1. Standardmäßig ist **All** aktiv (`aria-pressed="true"`).
 2. Nach dem Anklicken von **Active** verschwindet eine erledigte Aufgabe.
 3. Nach dem Anklicken von **Completed** taucht nur die erledigte Aufgabe auf.
 
-### Lösungshinweis
+### Lösungshinweis 🟦 TypeScript
 
 <details>
-<summary>Hinweis anzeigen</summary>
+<summary>Hinweis anzeigen (TypeScript)</summary>
 
 ```ts
 test('Filter funktionieren korrekt', async ({ page }) => {
   await page.goto('/');
 
-  // All ist aktiv
   await expect(page.getByTestId('testID-All')).toHaveAttribute('aria-pressed', 'true');
 
-  // Aufgabe als erledigt markieren
   await page.getByRole('checkbox').check();
 
-  // Active-Filter: erledigte Aufgabe nicht sichtbar
   await page.getByTestId('testID-Active').click();
   await expect(page.getByText('test')).not.toBeVisible();
 
-  // Completed-Filter: erledigte Aufgabe sichtbar
   await page.getByTestId('testID-Completed').click();
   await expect(page.getByText('test')).toBeVisible();
 });
+```
+
+</details>
+
+### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+```csharp
+[Test]
+public async Task FilterFunktionierenKorrekt()
+{
+    // All ist standardmäßig aktiv
+    await Expect(Page.GetByTestId("testID-All"))
+        .ToHaveAttributeAsync("aria-pressed", "true");
+
+    // Aufgabe als erledigt markieren
+    await Page.GetByRole(AriaRole.Checkbox).CheckAsync();
+
+    // Active-Filter
+    await Page.GetByTestId("testID-Active").ClickAsync();
+    await Expect(Page.GetByText("test")).Not.ToBeVisibleAsync();
+
+    // Completed-Filter
+    await Page.GetByTestId("testID-Completed").ClickAsync();
+    await Expect(Page.GetByText("test")).ToBeVisibleAsync();
+}
 ```
 
 </details>
@@ -251,20 +384,19 @@ test('Filter funktionieren korrekt', async ({ page }) => {
 
 ### Aufgabe
 
-Bearbeite die vorhandene Aufgabe **„test"** und benenne sie in **„test (bearbeitet)"** um. Prüfe danach, dass der neue Name angezeigt wird.
+Benenne die Aufgabe **„test"** in **„test (bearbeitet)"** um. Prüfe danach, dass der neue Name angezeigt wird.
 
-### Teilschritte
+### Teilschritte (sprachunabhängig)
 
-1. Klicke auf den „Edit"-Button.
-2. Warte, bis das Edit-Formular sichtbar ist.
-3. Lösche den vorhandenen Wert und gib den neuen Namen ein.
-4. Klicke auf „Save".
-5. Prüfe, dass der neue Name auf der Seite steht.
+1. „Edit"-Button klicken.
+2. Edit-Textfeld mit neuem Namen befüllen.
+3. „Save"-Button klicken.
+4. Neuen Namen auf der Seite prüfen.
 
-### Lösungshinweis
+### Lösungshinweis 🟦 TypeScript
 
 <details>
-<summary>Hinweis anzeigen</summary>
+<summary>Hinweis anzeigen (TypeScript)</summary>
 
 ```ts
 test('Aufgabe bearbeiten', async ({ page }) => {
@@ -282,21 +414,42 @@ test('Aufgabe bearbeiten', async ({ page }) => {
 
 </details>
 
+### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+```csharp
+[Test]
+public async Task AufgabeBearbeiten()
+{
+    await Page.GetByRole(AriaRole.Button, new() { Name = "Edit" }).ClickAsync();
+
+    var editField = Page.GetByRole(AriaRole.Textbox).Last;
+    await editField.FillAsync("test (bearbeitet)");
+    await Page.GetByRole(AriaRole.Button, new() { Name = "Save" }).ClickAsync();
+
+    await Expect(Page.GetByText("test (bearbeitet)")).ToBeVisibleAsync();
+}
+```
+
+</details>
+
 ---
 
 ## Exercise 6 – Aufgabe löschen
 
 ### Aufgabe
 
-Lösche die vorhandene Aufgabe **„test"** und prüfe:
+Lösche die Aufgabe **„test"** und prüfe:
 
 1. Die Aufgabe ist nicht mehr sichtbar.
 2. Der Heading-Text lautet **„0 tasks remaining"**.
 
-### Lösungshinweis
+### Lösungshinweis 🟦 TypeScript
 
 <details>
-<summary>Hinweis anzeigen</summary>
+<summary>Hinweis anzeigen (TypeScript)</summary>
 
 ```ts
 test('Aufgabe löschen', async ({ page }) => {
@@ -311,34 +464,46 @@ test('Aufgabe löschen', async ({ page }) => {
 
 </details>
 
+### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+```csharp
+[Test]
+public async Task AufgabeLoeschen()
+{
+    await Page.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+
+    await Expect(Page.GetByText("test")).Not.ToBeVisibleAsync();
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("0 tasks remaining");
+}
+```
+
+</details>
+
 ---
 
 ## Exercise 7 – Remote Tasks laden (API-Mock)
 
 ### Aufgabe
 
-Der Button **„Load remote tasks"** ruft intern `fetch('/remoteTasks.json')` auf und ersetzt die aktuelle Taskliste.  
+Der Button **„Load remote tasks"** ruft intern `fetch('/remoteTasks.json')` auf.  
 Schreibe einen Test, der:
 
-1. Die Netzwerkanfrage an `**/remoteTasks.json` abfängt und durch eigene Testdaten ersetzt.
+1. Die Netzwerkanfrage an `**/remoteTasks.json` **abfängt** und durch eigene Testdaten ersetzt.
 2. Den Button anklickt.
-3. Prüft, dass die gemockten Daten erscheinen.
+3. Prüft, dass die gemockten Daten erscheinen und die alten Daten verschwunden sind.
 
-### Konzept: `page.route`
+### Konzept
 
-```ts
-await page.route('**/remoteTasks.json', async (route) => {
-  await route.fulfill({
-    contentType: 'application/json',
-    body: JSON.stringify([ /* deine Testdaten */ ]),
-  });
-});
-```
+**TypeScript:** `page.route(pattern, handler)`  
+**C#:** `Page.RouteAsync(pattern, handler)`
 
-### Lösungshinweis
+### Lösungshinweis 🟦 TypeScript
 
 <details>
-<summary>Hinweis anzeigen</summary>
+<summary>Hinweis anzeigen (TypeScript)</summary>
 
 ```ts
 test('Remote Tasks laden mit Mock', async ({ page }) => {
@@ -363,9 +528,43 @@ test('Remote Tasks laden mit Mock', async ({ page }) => {
   await page.getByRole('button', { name: 'Load remote tasks' }).click();
 
   await expect(page.getByText('Mock-Aufgabe 1')).toBeVisible();
-  // Ursprüngliche Aufgabe "test" sollte verschwunden sein
   await expect(page.getByText('test')).not.toBeVisible();
 });
+```
+
+</details>
+
+### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+```csharp
+[Test]
+public async Task RemoteTasksLadenMitMock()
+{
+    var mockJson = """
+        [{"id":"todo-mock-1","name":"Mock-Aufgabe 1",
+          "time":"2024-01-01T00:00:00Z",
+          "location":{"latitude":0,"longitude":0},
+          "completed":false}]
+        """;
+
+    await Page.RouteAsync("**/remoteTasks.json", async route =>
+    {
+        await route.FulfillAsync(new RouteFulfillOptions
+        {
+            ContentType = "application/json",
+            Body = mockJson,
+        });
+    });
+
+    await Page.GotoAsync("http://localhost:3000/");
+    await Page.GetByRole(AriaRole.Button, new() { Name = "Load remote tasks" }).ClickAsync();
+
+    await Expect(Page.GetByText("Mock-Aufgabe 1")).ToBeVisibleAsync();
+    await Expect(Page.GetByText("test")).Not.ToBeVisibleAsync();
+}
 ```
 
 </details>
@@ -376,34 +575,37 @@ test('Remote Tasks laden mit Mock', async ({ page }) => {
 
 ### Aufgabe
 
-Refaktoriere deine Tests so, dass du eine `TodoPage`-Klasse verwendest, die die Selektoren kapselt.
+Refaktoriere deine Tests so, dass du eine `TodoPage`-Klasse verwendest, die alle Selektoren kapselt.
 
 ### Minimalanforderung an die Klasse
 
+**TypeScript:**
 ```ts
 // tests/pages/TodoPage.ts
-import { type Page, type Locator } from '@playwright/test';
-
 export class TodoPage {
-  readonly page: Page;
-  readonly input: Locator;
-  readonly addButton: Locator;
-  readonly listHeading: Locator;
-
   constructor(page: Page) { /* ... */ }
-
-  async goto() { /* ... */ }
-  async addTask(name: string) { /* ... */ }
-  async deleteFirstTask() { /* ... */ }
+  async goto(): Promise<void> { /* ... */ }
+  async addTask(name: string): Promise<void> { /* ... */ }
+  async deleteFirstTask(): Promise<void> { /* ... */ }
 }
 ```
 
-Schreibe danach einen Test, der über `TodoPage` eine Aufgabe hinzufügt und wieder löscht.
+**C#:**
+```csharp
+public class TodoPage(IPage page)
+{
+    public async Task GotoAsync() { /* ... */ }
+    public async Task AddTaskAsync(string name) { /* ... */ }
+    public async Task DeleteFirstTaskAsync() { /* ... */ }
+}
+```
 
-### Lösungshinweis
+Schreibe danach einen Test, der über die Klasse eine Aufgabe hinzufügt und wieder löscht.
+
+### Lösungshinweis 🟦 TypeScript
 
 <details>
-<summary>Hinweis anzeigen</summary>
+<summary>Hinweis anzeigen (TypeScript)</summary>
 
 **`tests/pages/TodoPage.ts`**
 
@@ -462,28 +664,96 @@ test('POM: Aufgabe hinzufügen und löschen', async ({ page, context }) => {
 
 </details>
 
+### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+**`Pages/TodoPage.cs`**
+
+```csharp
+using Microsoft.Playwright;
+
+namespace TodoTests.Pages;
+
+public class TodoPage(IPage page)
+{
+    private ILocator Input => page.Locator("#new-todo-input");
+    private ILocator AddButton => page.Locator("#myUniqueID");
+    public ILocator ListHeading => page.Locator("#list-heading");
+
+    public async Task GotoAsync()
+        => await page.GotoAsync("http://localhost:3000/");
+
+    public async Task AddTaskAsync(string name)
+    {
+        await Input.FillAsync(name);
+        await AddButton.ClickAsync();
+    }
+
+    public async Task DeleteFirstTaskAsync()
+        => await page.GetByRole(AriaRole.Button, new() { Name = "Delete" })
+                     .First.ClickAsync();
+}
+```
+
+**`PomTests.cs`**
+
+```csharp
+using Microsoft.Playwright.NUnit;
+using TodoTests.Pages;
+
+namespace TodoTests;
+
+[Parallelizable(ParallelScope.Self)]
+[TestFixture]
+public class PomTests : PageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        Permissions = new[] { "geolocation" },
+        Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+    };
+
+    [Test]
+    public async Task PomAufgabeHinzufuegenUndLoeschen()
+    {
+        var todoPage = new TodoPage(Page);
+        await todoPage.GotoAsync();
+        await todoPage.AddTaskAsync("POM-Aufgabe");
+
+        await Expect(Page.GetByText("POM-Aufgabe")).ToBeVisibleAsync();
+
+        await todoPage.DeleteFirstTaskAsync();
+
+        await Expect(Page.GetByText("POM-Aufgabe")).Not.ToBeVisibleAsync();
+    }
+}
+```
+
+</details>
+
 ---
 
 ## Exercise 9 – CI: Playwright in GitHub Actions
 
 ### Aufgabe
 
-Erstelle (oder vervollständige) eine GitHub-Actions-Workflow-Datei, die:
+Erstelle eine GitHub-Actions-Workflow-Datei, die:
 
 1. Bei jedem Push / PR auf `main` ausgeführt wird.
-2. Node.js 20 verwendet.
-3. Abhängigkeiten installiert **und** Playwright-Browser installiert.
-4. `npm test` ausführt.
-5. Den Playwright-HTML-Report als Artefakt hochlädt.
+2. Abhängigkeiten installiert **und** Playwright-Browser installiert.
+3. Die Tests ausführt.
+4. Den Playwright-HTML-Report als Artefakt hochlädt.
 
-### Lösungshinweis
+### Lösungshinweis 🟦 TypeScript
 
 <details>
-<summary>Hinweis anzeigen</summary>
+<summary>Hinweis anzeigen (TypeScript)</summary>
 
 ```yaml
 # .github/workflows/playwright.yml
-name: Playwright Tests
+name: Playwright Tests (TypeScript)
 
 on:
   push:
@@ -512,8 +782,63 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report
+          name: playwright-report-ts
           path: playwright-report/
+          retention-days: 7
+```
+
+</details>
+
+### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C#)</summary>
+
+```yaml
+# .github/workflows/playwright-dotnet.yml
+name: Playwright Tests (.NET)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # App starten
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run dev &
+      - run: npx wait-on http://localhost:3000
+
+      # .NET Tests
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Build & install browsers
+        working-directory: TodoTests
+        run: |
+          dotnet build
+          pwsh bin/Debug/net8.0/playwright.ps1 install --with-deps
+
+      - name: Run tests
+        working-directory: TodoTests
+        run: dotnet test --logger "trx;LogFileName=results.trx"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-dotnet
+          path: TodoTests/TestResults/
           retention-days: 7
 ```
 
@@ -523,24 +848,24 @@ jobs:
 
 ## Bonus: Was könnte noch verbessert werden?
 
-Schau dir den Quellcode an und überlege, welche weiteren Tests oder Verbesserungen sinnvoll wären:
+Schau dir den Quellcode an und überlege, welche weiteren Tests sinnvoll wären:
 
-- **Bug in `toggleTaskCompleted`:** Finde den Fehler in `App.tsx` (Zeile ~44). Kannst du einen fehlschlagenden Test schreiben, der den Bug beweist, und danach den Fix vornehmen?
-- **Accessibility:** Nutze `@axe-core/playwright`, um Barrierefreiheitsprobleme automatisch zu erkennen.
-- **Screenshot-Vergleich:** Füge einen visuellen Regressionstest mit `toHaveScreenshot()` hinzu.
-- **Mehrere Browser:** Konfiguriere `playwright.config.ts` so, dass Tests in Chromium, Firefox und WebKit laufen.
+- **Bug in `toggleTaskCompleted`:** Finde den Fehler in `App.tsx` (Zeile ~44). Schreibe einen fehlschlagenden Test, der den Bug beweist, und fixe danach den Code.
+- **Accessibility:** Nutze `@axe-core/playwright` (TS) oder `Deque.AxeCore.Playwright` (C#), um Barrierefreiheitsprobleme automatisch zu erkennen.
+- **Screenshot-Vergleich:** Füge einen visuellen Regressionstest hinzu – `toHaveScreenshot()` (TS) bzw. `Page.ScreenshotAsync` mit Bildvergleich (C#).
+- **Mehrere Browser:** Konfiguriere `playwright.config.ts` (TS) oder `[BrowserType]`-Attribute (C#), damit Tests in Chromium, Firefox und WebKit laufen.
 
 ---
 
 ## Ressourcen
 
-| Thema | Link |
-|-------|------|
-| Playwright Docs | https://playwright.dev/docs/intro |
-| Playwright API-Referenz | https://playwright.dev/docs/api/class-playwright |
-| Page Object Models | https://playwright.dev/docs/pom |
-| Netzwerk-Mocking | https://playwright.dev/docs/mock |
-| React Testing-Strategie | https://reactjs.org/docs/testing.html |
+| Thema | TypeScript / JavaScript | C# / .NET |
+|-------|------------------------|-----------|
+| Einstieg | [playwright.dev/docs/intro](https://playwright.dev/docs/intro) | [playwright.dev/dotnet/docs/intro](https://playwright.dev/dotnet/docs/intro) |
+| API-Referenz | [playwright.dev/docs/api](https://playwright.dev/docs/api/class-playwright) | [playwright.dev/dotnet/docs/api](https://playwright.dev/dotnet/docs/api/class-playwright) |
+| Page Object Model | [playwright.dev/docs/pom](https://playwright.dev/docs/pom) | [playwright.dev/dotnet/docs/pom](https://playwright.dev/dotnet/docs/pom) |
+| Netzwerk-Mocking | [playwright.dev/docs/mock](https://playwright.dev/docs/mock) | [playwright.dev/dotnet/docs/mock](https://playwright.dev/dotnet/docs/mock) |
+| Geolocation | [playwright.dev/docs/emulation#geolocation](https://playwright.dev/docs/emulation#geolocation) | [playwright.dev/dotnet/docs/emulation#geolocation](https://playwright.dev/dotnet/docs/emulation#geolocation) |
 
 ---
 
