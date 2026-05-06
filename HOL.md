@@ -1020,227 +1020,7 @@ public async Task RemoteTasksLadenMitMock()
 
 ---
 
-## Exercise 8 – Page Object Model (POM)
-
-### Aufgabe
-
-Refaktoriere deine Tests so, dass du eine `TodoPage`-Klasse verwendest, die alle Selektoren kapselt.
-
-### Minimalanforderung an die Klasse
-
-**TypeScript:**
-```ts
-// tests/pages/TodoPage.ts
-export class TodoPage {
-  constructor(page: Page) { /* ... */ }
-  async goto(): Promise<void> { /* ... */ }
-  async addTask(name: string): Promise<void> { /* ... */ }
-  async deleteFirstTask(): Promise<void> { /* ... */ }
-}
-```
-
-**C# (framework-unabhängig – die Page-Klasse selbst kennt keine Test-Attribute):**
-```csharp
-public class TodoPage(IPage page)
-{
-    public async Task GotoAsync() { /* ... */ }
-    public async Task AddTaskAsync(string name) { /* ... */ }
-    public async Task DeleteFirstTaskAsync() { /* ... */ }
-}
-```
-
-Schreibe danach einen Test, der über die Klasse eine Aufgabe hinzufügt und wieder löscht.
-
-### Lösungshinweis 🟦 TypeScript
-
-<details>
-<summary>Hinweis anzeigen (TypeScript)</summary>
-
-**`tests/pages/TodoPage.ts`**
-
-```ts
-import { type Page, type Locator } from '@playwright/test';
-
-export class TodoPage {
-  readonly page: Page;
-  readonly input: Locator;
-  readonly addButton: Locator;
-  readonly listHeading: Locator;
-
-  constructor(page: Page) {
-    this.page = page;
-    this.input = page.locator('#new-todo-input');
-    this.addButton = page.locator('#myUniqueID');
-    this.listHeading = page.locator('#list-heading');
-  }
-
-  async goto() {
-    await this.page.goto('/');
-  }
-
-  async addTask(name: string) {
-    await this.input.fill(name);
-    await this.addButton.click();
-  }
-
-  async deleteFirstTask() {
-    await this.page.getByRole('button', { name: 'Delete' }).first().click();
-  }
-}
-```
-
-**`tests/todo-pom.spec.ts`**
-
-```ts
-import { test, expect } from '@playwright/test';
-import { TodoPage } from './pages/TodoPage';
-
-test('POM: Aufgabe hinzufügen und löschen', async ({ page, context }) => {
-  await context.grantPermissions(['geolocation']);
-  await context.setGeolocation({ latitude: 49.637, longitude: 6.901 });
-
-  const todoPage = new TodoPage(page);
-  await todoPage.goto();
-  await todoPage.addTask('POM-Aufgabe');
-
-  await expect(page.getByText('POM-Aufgabe')).toBeVisible();
-
-  await todoPage.deleteFirstTask();
-
-  await expect(page.getByText('POM-Aufgabe')).not.toBeVisible();
-});
-```
-
-</details>
-
-### Lösungshinweis 🟪 C#
-
-<details>
-<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
-
-**`Pages/TodoPage.cs`** – framework-unabhängig:
-
-```csharp
-using Microsoft.Playwright;
-
-namespace TodoTests.Pages;
-
-public class TodoPage(IPage page)
-{
-    private ILocator Input => page.Locator("#new-todo-input");
-    private ILocator AddButton => page.Locator("#myUniqueID");
-    public ILocator ListHeading => page.Locator("#list-heading");
-
-    public async Task GotoAsync()
-        => await page.GotoAsync("http://localhost:3000/");
-
-    public async Task AddTaskAsync(string name)
-    {
-        await Input.FillAsync(name);
-        await AddButton.ClickAsync();
-    }
-
-    public async Task DeleteFirstTaskAsync()
-        => await page.GetByRole(AriaRole.Button, new() { Name = "Delete" })
-                     .First.ClickAsync();
-}
-```
-
-**`PomTests.cs` – NUnit**
-
-```csharp
-using Microsoft.Playwright.NUnit;
-using TodoTests.Pages;
-
-namespace TodoTests;
-
-[Parallelizable(ParallelScope.Self)]
-[TestFixture]
-public class PomTests : PageTest
-{
-    public override BrowserNewContextOptions ContextOptions() => new()
-    {
-        Permissions = new[] { "geolocation" },
-        Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
-    };
-
-    [Test]
-    public async Task PomAufgabeHinzufuegenUndLoeschen()
-    {
-        var todoPage = new TodoPage(Page);
-        await todoPage.GotoAsync();
-        await todoPage.AddTaskAsync("POM-Aufgabe");
-        await Expect(Page.GetByText("POM-Aufgabe")).ToBeVisibleAsync();
-        await todoPage.DeleteFirstTaskAsync();
-        await Expect(Page.GetByText("POM-Aufgabe")).Not.ToBeVisibleAsync();
-    }
-}
-```
-
-**`PomTests.cs` – xUnit**
-
-```csharp
-using Microsoft.Playwright.Xunit;
-using TodoTests.Pages;
-
-namespace TodoTests;
-
-public class PomTests : PageTest
-{
-    public override BrowserNewContextOptions ContextOptions() => new()
-    {
-        Permissions = new[] { "geolocation" },
-        Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
-    };
-
-    [Fact]
-    public async Task PomAufgabeHinzufuegenUndLoeschen()
-    {
-        var todoPage = new TodoPage(Page);
-        await todoPage.GotoAsync();
-        await todoPage.AddTaskAsync("POM-Aufgabe");
-        await Expect(Page.GetByText("POM-Aufgabe")).ToBeVisibleAsync();
-        await todoPage.DeleteFirstTaskAsync();
-        await Expect(Page.GetByText("POM-Aufgabe")).Not.ToBeVisibleAsync();
-    }
-}
-```
-
-**`PomTests.cs` – MSTest**
-
-```csharp
-using Microsoft.Playwright.MSTest;
-using TodoTests.Pages;
-
-namespace TodoTests;
-
-[TestClass]
-public class PomTests : PageTest
-{
-    public override BrowserNewContextOptions ContextOptions() => new()
-    {
-        Permissions = new[] { "geolocation" },
-        Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
-    };
-
-    [TestMethod]
-    public async Task PomAufgabeHinzufuegenUndLoeschen()
-    {
-        var todoPage = new TodoPage(Page);
-        await todoPage.GotoAsync();
-        await todoPage.AddTaskAsync("POM-Aufgabe");
-        await Expect(Page.GetByText("POM-Aufgabe")).ToBeVisibleAsync();
-        await todoPage.DeleteFirstTaskAsync();
-        await Expect(Page.GetByText("POM-Aufgabe")).Not.ToBeVisibleAsync();
-    }
-}
-```
-
-</details>
-
----
-
-## Exercise 9 – Debugging-Tools: Codegen, Trace Viewer und Browser DevTools
+## Exercise 8 – Debugging-Tools: Codegen, Trace Viewer und Browser DevTools
 
 ### Hintergrund
 
@@ -1571,7 +1351,7 @@ pwsh bin/Debug/net8.0/playwright.ps1 show-trace trace-AbsichtlichFehlschlagender
 
 ---
 
-## Exercise 10 – Screenshots und Videoaufzeichnung
+## Exercise 9 – Screenshots und Videoaufzeichnung
 
 Playwright kann Testläufe automatisch per Screenshot und Video dokumentieren – hilfreich beim Debuggen, im CI-Reporting und für visuelle Regressionstests.
 
@@ -1864,16 +1644,460 @@ public async Task VisuellerSnapshotStartseite()
 
 ---
 
-## Exercise 11 – CI: Tests in der Pipeline ausführen
+## Exercise 10 – Playwright MCP Server
 
-Playwright-Tests lassen sich in verschiedenen CI/CD-Umgebungen automatisieren. Diese Übung zeigt **vier Varianten** – wähle die für euren Stack passende.
+### Hintergrund
+
+Der **Playwright MCP Server** (Model Context Protocol) ermöglicht es KI-Assistenten wie GitHub Copilot oder Claude, direkt mit einem echten Browser zu interagieren – navigieren, klicken, Inhalte lesen, Screenshots aufnehmen – ohne eigenen Playwright-Code schreiben zu müssen.
+
+> **Model Context Protocol (MCP)** ist ein offener Standard, über den KI-Tools Werkzeuge (Tools) aufrufen können. Der Playwright MCP Server stellt Browser-Aktionen als solche Tools bereit.
+
+Typische Anwendungsfälle:
+- KI-gestütztes Explorieren einer unbekannten Web-App
+- Automatisches Generieren von Testideen aus dem laufenden Browser-Kontext
+- Interaktives Debuggen: „Warum schlägt dieser Test fehl?"
+- Barrierefreiheits-Checks direkt durch den KI-Assistenten
+
+---
+
+### Setup
+
+#### Voraussetzungen
+
+| Werkzeug | Zweck |
+|----------|-------|
+| Node.js 18+ | MCP Server läuft als Node-Prozess |
+| GitHub Copilot (VS Code) **oder** Claude Desktop | MCP-Client |
+| `@playwright/mcp` npm-Paket | Der MCP Server selbst |
+
+#### 🟦 VS Code + GitHub Copilot
+
+**Option A – automatisch per `mcp.json`:**
+
+Lege `.vscode/mcp.json` im Repo an (oder nutze die globale User-Settings):
+
+```json
+{
+  "servers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
+  }
+}
+```
+
+Alternativ headless deaktivieren (sichtbarer Browser):
+
+```json
+{
+  "servers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless=false"]
+    }
+  }
+}
+```
+
+Danach: `Ctrl+Shift+P` → **MCP: List Servers** → `playwright` sollte als `running` erscheinen.
+
+**Option B – über VS Code Settings UI:**
+
+`Ctrl+,` → Suche nach `mcp` → **Edit in settings.json** → gleiche JSON-Struktur wie oben einfügen.
+
+#### 🟪 Visual Studio (Windows)
+
+Visual Studio unterstützt MCP seit Version 17.14 Preview (GitHub Copilot Chat).  
+Lege eine globale MCP-Konfigurationsdatei an:
+
+```
+%USERPROFILE%\.mcp\mcp.json
+```
+
+```json
+{
+  "servers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless=false"]
+    }
+  }
+}
+```
+
+Danach Visual Studio neu starten → im **Copilot Chat**-Fenster erscheint ein 🔧-Icon, das die verfügbaren MCP-Tools anzeigt.
+
+> ℹ️ Stelle sicher, dass Copilot Chat im **Agent-Modus** läuft (`@agent`), damit MCP-Tools genutzt werden können.
+
+---
+
+### Teil A – Browser-Navigation durch den KI-Assistenten
+
+#### Aufgabe
+
+Starte den MCP Server und lass den KI-Assistenten die TodoMatic-App erkunden.
+
+1. Starte die App: `npm run dev`
+2. Öffne Copilot Chat (VS Code: `Ctrl+Alt+I` | Visual Studio: `View` → `GitHub Copilot Chat`)
+3. Stelle sicher, dass du im **Agent-Modus** bist (VS Code: wähle `Agent` im Dropdown, Visual Studio: `@agent`)
+4. Gib folgende Prompts ein und beobachte, wie der Assistent den Browser steuert:
+
+```
+Öffne http://localhost:3000 und beschreibe mir, welche UI-Elemente auf der Seite vorhanden sind.
+```
+
+```
+Navigiere zur TodoMatic-App, füge eine neue Aufgabe mit dem Namen "MCP-Test" hinzu und mache einen Screenshot.
+```
+
+```
+Welche data-testid-Attribute sind auf der Seite vorhanden? Liste sie auf.
+```
+
+#### Was passiert im Hintergrund?
+
+Der KI-Assistent ruft über MCP Browser-Tools auf, z. B.:
+- `browser_navigate` – URL öffnen
+- `browser_snapshot` – Accessibility-Tree auslesen
+- `browser_click` – Element anklicken
+- `browser_type` – Text eingeben
+- `browser_take_screenshot` – Screenshot aufnehmen
+
+---
+
+### Teil B – Testideen generieren lassen
+
+#### Aufgabe
+
+Lass den Assistenten basierend auf dem Live-Browser-Kontext Testideen vorschlagen.
+
+```
+Schau dir die TodoMatic-App unter http://localhost:3000 an und schlage mir 5 sinnvolle Playwright-Testfälle vor. Berücksichtige dabei alle sichtbaren Features.
+```
+
+```
+Generiere für den Filter-Bereich der TodoMatic-App einen vollständigen Playwright-Test in TypeScript, der alle drei Filter (All, Active, Completed) testet.
+```
+
+```
+Generiere denselben Test als C# NUnit-Test.
+```
+
+Vergleiche den generierten Code mit deinen manuell geschriebenen Tests aus Exercise 4 (Filter). Was sind Unterschiede und Gemeinsamkeiten?
+
+---
+
+### Teil C – Fehleranalyse mit MCP-Unterstützung
+
+#### Aufgabe
+
+Nutze den MCP Server, um einen fehlschlagenden Test zu analysieren.
+
+1. Nimm den absichtlich fehlschlagenden Test aus Exercise 8 (Trace Viewer) – oder schreibe einen neuen, der fehlschlägt.
+2. Frage den Assistenten:
+
+```
+Mein Playwright-Test schlägt fehl. Öffne http://localhost:3000 und prüfe, ob der Text "Diese Aufgabe gibt es nicht" tatsächlich auf der Seite vorhanden ist. Was siehst du stattdessen?
+```
+
+```
+Schau dir die aktuelle Seite an und erkläre mir, warum folgender Locator möglicherweise nicht funktioniert: page.getByText('Diese Aufgabe gibt es nicht')
+```
+
+---
+
+### Lösungshinweis – Vollständiges Setup und Beispiel-Prompt-Sequenz
+
+<details>
+<summary>Hinweis anzeigen</summary>
+
+**Schritt-für-Schritt-Ablauf (VS Code):**
+
+1. App starten: `npm run dev`
+2. `.vscode/mcp.json` anlegen (siehe Setup oben)
+3. VS Code neu laden: `Ctrl+Shift+P` → `Developer: Reload Window`
+4. MCP-Status prüfen: `Ctrl+Shift+P` → `MCP: List Servers` → playwright = running
+5. Copilot Chat öffnen: `Ctrl+Alt+I`
+6. Agent-Modus aktivieren: im Dropdown `Agent` wählen
+7. Prompt eingeben:
+
+```
+Öffne http://localhost:3000, klicke auf den "Edit"-Button der Aufgabe "test",
+ändere den Namen zu "MCP-Aufgabe" und klicke auf "Save".
+Mache danach einen Screenshot und zeige mir, ob die Änderung sichtbar ist.
+```
+
+**Erwartetes Verhalten:** Der Assistent öffnet den Browser, führt die Schritte aus und antwortet mit einem Screenshot und einer Beschreibung der Seite nach der Änderung.
+
+**Typische MCP-Tool-Aufrufe in diesem Ablauf:**
+```
+browser_navigate("http://localhost:3000")
+browser_snapshot()                         → liest Accessibility-Tree
+browser_click(ref="Edit-Button")
+browser_type(ref="Textfeld", text="MCP-Aufgabe")
+browser_click(ref="Save-Button")
+browser_take_screenshot()
+```
+
+</details>
+
+---
+
+### Wichtige Hinweise
+
+| Hinweis | Details |
+|---------|---------|
+| **Geolocation** | Der MCP-Browser kennt keine automatische Geolocation-Freigabe. Beim Hinzufügen von Aufgaben via MCP muss der Browser manuell die Berechtigung erteilen – oder die App reagiert nicht. |
+| **Headless vs. sichtbar** | `--headless=false` empfohlen, um zu sehen, was der Assistent tut |
+| **Kosten** | MCP-Aufrufe zählen als Copilot-Anfragen. Für Workshops: `--headless=true` spart Ressourcen |
+| **Sicherheit** | MCP gibt dem Assistenten echten Browser-Zugriff. Nur vertrauenswürdige MCP-Server einbinden |
+
+---
+
+## Bonus: Was könnte noch verbessert werden?
+
+Schau dir den Quellcode an und überlege, welche weiteren Tests sinnvoll wären:
+
+- **Bug in `toggleTaskCompleted`:** Finde den Fehler in `App.tsx` (Zeile ~44). Schreibe einen fehlschlagenden Test, der den Bug beweist, und fixe danach den Code.
+- **Accessibility:** Nutze `@axe-core/playwright` (TS) oder `Deque.AxeCore.Playwright` (C#), um Barrierefreiheitsprobleme automatisch zu erkennen.
+- **Screenshot-Vergleich:** Erweitere Exercise 9 um weitere Seiten-Snapshots und integriere den visuellen Regressionstest in die CI-Pipeline (Exercise 12).
+- **Mehrere Browser:** Konfiguriere `playwright.config.ts` (TS) oder `[BrowserType]`-Attribute (C#), damit Tests in Chromium, Firefox und WebKit laufen.
+
+---
+
+## Exercise 11 – Page Object Model (POM)
+
+### Aufgabe
+
+Refaktoriere deine Tests so, dass du eine `TodoPage`-Klasse verwendest, die alle Selektoren kapselt.
+
+### Minimalanforderung an die Klasse
+
+**TypeScript:**
+```ts
+// tests/pages/TodoPage.ts
+export class TodoPage {
+  constructor(page: Page) { /* ... */ }
+  async goto(): Promise<void> { /* ... */ }
+  async addTask(name: string): Promise<void> { /* ... */ }
+  async deleteFirstTask(): Promise<void> { /* ... */ }
+}
+```
+
+**C# (framework-unabhängig – die Page-Klasse selbst kennt keine Test-Attribute):**
+```csharp
+public class TodoPage(IPage page)
+{
+    public async Task GotoAsync() { /* ... */ }
+    public async Task AddTaskAsync(string name) { /* ... */ }
+    public async Task DeleteFirstTaskAsync() { /* ... */ }
+}
+```
+
+Schreibe danach einen Test, der über die Klasse eine Aufgabe hinzufügt und wieder löscht.
+
+### Lösungshinweis 🟦 TypeScript
+
+<details>
+<summary>Hinweis anzeigen (TypeScript)</summary>
+
+**`tests/pages/TodoPage.ts`**
+
+```ts
+import { type Page, type Locator } from '@playwright/test';
+
+export class TodoPage {
+  readonly page: Page;
+  readonly input: Locator;
+  readonly addButton: Locator;
+  readonly listHeading: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.input = page.locator('#new-todo-input');
+    this.addButton = page.locator('#myUniqueID');
+    this.listHeading = page.locator('#list-heading');
+  }
+
+  async goto() {
+    await this.page.goto('/');
+  }
+
+  async addTask(name: string) {
+    await this.input.fill(name);
+    await this.addButton.click();
+  }
+
+  async deleteFirstTask() {
+    await this.page.getByRole('button', { name: 'Delete' }).first().click();
+  }
+}
+```
+
+**`tests/todo-pom.spec.ts`**
+
+```ts
+import { test, expect } from '@playwright/test';
+import { TodoPage } from './pages/TodoPage';
+
+test('POM: Aufgabe hinzufügen und löschen', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 49.637, longitude: 6.901 });
+
+  const todoPage = new TodoPage(page);
+  await todoPage.goto();
+  await todoPage.addTask('POM-Aufgabe');
+
+  await expect(page.getByText('POM-Aufgabe')).toBeVisible();
+
+  await todoPage.deleteFirstTask();
+
+  await expect(page.getByText('POM-Aufgabe')).not.toBeVisible();
+});
+```
+
+</details>
+
+### Lösungshinweis 🟪 C#
+
+<details>
+<summary>Hinweis anzeigen (C# – NUnit / xUnit / MSTest)</summary>
+
+**`Pages/TodoPage.cs`** – framework-unabhängig:
+
+```csharp
+using Microsoft.Playwright;
+
+namespace TodoTests.Pages;
+
+public class TodoPage(IPage page)
+{
+    private ILocator Input => page.Locator("#new-todo-input");
+    private ILocator AddButton => page.Locator("#myUniqueID");
+    public ILocator ListHeading => page.Locator("#list-heading");
+
+    public async Task GotoAsync()
+        => await page.GotoAsync("http://localhost:3000/");
+
+    public async Task AddTaskAsync(string name)
+    {
+        await Input.FillAsync(name);
+        await AddButton.ClickAsync();
+    }
+
+    public async Task DeleteFirstTaskAsync()
+        => await page.GetByRole(AriaRole.Button, new() { Name = "Delete" })
+                     .First.ClickAsync();
+}
+```
+
+**`PomTests.cs` – NUnit**
+
+```csharp
+using Microsoft.Playwright.NUnit;
+using TodoTests.Pages;
+
+namespace TodoTests;
+
+[Parallelizable(ParallelScope.Self)]
+[TestFixture]
+public class PomTests : PageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        Permissions = new[] { "geolocation" },
+        Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+    };
+
+    [Test]
+    public async Task PomAufgabeHinzufuegenUndLoeschen()
+    {
+        var todoPage = new TodoPage(Page);
+        await todoPage.GotoAsync();
+        await todoPage.AddTaskAsync("POM-Aufgabe");
+        await Expect(Page.GetByText("POM-Aufgabe")).ToBeVisibleAsync();
+        await todoPage.DeleteFirstTaskAsync();
+        await Expect(Page.GetByText("POM-Aufgabe")).Not.ToBeVisibleAsync();
+    }
+}
+```
+
+**`PomTests.cs` – xUnit**
+
+```csharp
+using Microsoft.Playwright.Xunit;
+using TodoTests.Pages;
+
+namespace TodoTests;
+
+public class PomTests : PageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        Permissions = new[] { "geolocation" },
+        Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+    };
+
+    [Fact]
+    public async Task PomAufgabeHinzufuegenUndLoeschen()
+    {
+        var todoPage = new TodoPage(Page);
+        await todoPage.GotoAsync();
+        await todoPage.AddTaskAsync("POM-Aufgabe");
+        await Expect(Page.GetByText("POM-Aufgabe")).ToBeVisibleAsync();
+        await todoPage.DeleteFirstTaskAsync();
+        await Expect(Page.GetByText("POM-Aufgabe")).Not.ToBeVisibleAsync();
+    }
+}
+```
+
+**`PomTests.cs` – MSTest**
+
+```csharp
+using Microsoft.Playwright.MSTest;
+using TodoTests.Pages;
+
+namespace TodoTests;
+
+[TestClass]
+public class PomTests : PageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        Permissions = new[] { "geolocation" },
+        Geolocation = new Geolocation { Latitude = 49.637f, Longitude = 6.901f },
+    };
+
+    [TestMethod]
+    public async Task PomAufgabeHinzufuegenUndLoeschen()
+    {
+        var todoPage = new TodoPage(Page);
+        await todoPage.GotoAsync();
+        await todoPage.AddTaskAsync("POM-Aufgabe");
+        await Expect(Page.GetByText("POM-Aufgabe")).ToBeVisibleAsync();
+        await todoPage.DeleteFirstTaskAsync();
+        await Expect(Page.GetByText("POM-Aufgabe")).Not.ToBeVisibleAsync();
+    }
+}
+```
+
+</details>
+
+---
+
+## Exercise 12 – CI: Tests in der Pipeline ausführen
+
+Playwright-Tests lassen sich in verschiedenen CI/CD-Umgebungen automatisieren. Diese Übung zeigt **drei Varianten** – wähle die für euren Stack passende.
 
 | Variante | Wann verwenden? |
 |----------|----------------|
 | **A – GitHub Actions** | Repository liegt auf GitHub |
 | **B – Azure Pipelines** | Azure DevOps als CI/CD-Plattform |
 | **C – Docker Container** | Reproduzierbare, isolierte Ausführung (lokal & in CI) |
-| **D – Azure Playwright Service** | Skalierbare Cloud-Ausführung auf Microsoft-Infrastruktur |
 
 ### Aufgabe (alle Varianten)
 
@@ -2228,7 +2452,9 @@ steps:
 
 ---
 
-### Variante D – Azure Playwright Service (Bonus)
+## Exercise 13 – Azure Playwright Service
+
+[**Azure Playwright Service**](https://azure.microsoft.com/en-us/products/playwright-testing) ist ein verwalteter Cloud-Dienst, der Playwright-Tests auf skalierbarer Microsoft-Infrastruktur ausführt – inklusive paralleler Ausführung auf mehreren Browsern ohne eigene Browser-Installation.
 
 [**Azure Playwright Service**](https://azure.microsoft.com/en-us/products/playwright-testing) ist ein verwalteter Cloud-Dienst, der Playwright-Tests auf skalierbarer Microsoft-Infrastruktur ausführt – inklusive paralleler Ausführung auf mehreren Browsern ohne eigene Browser-Installation.
 
@@ -2413,231 +2639,6 @@ PLAYWRIGHT_SERVICE_URL=<URL> \
 PLAYWRIGHT_SERVICE_ACCESS_TOKEN=<Token> \
 dotnet test --logger "microsoft-playwright-testing"
 ```
-
----
-
-## Bonus: Was könnte noch verbessert werden?
-
-Schau dir den Quellcode an und überlege, welche weiteren Tests sinnvoll wären:
-
-- **Bug in `toggleTaskCompleted`:** Finde den Fehler in `App.tsx` (Zeile ~44). Schreibe einen fehlschlagenden Test, der den Bug beweist, und fixe danach den Code.
-- **Accessibility:** Nutze `@axe-core/playwright` (TS) oder `Deque.AxeCore.Playwright` (C#), um Barrierefreiheitsprobleme automatisch zu erkennen.
-- **Screenshot-Vergleich:** Erweitere Exercise 10 um weitere Seiten-Snapshots und integriere den visuellen Regressionstest in die CI-Pipeline (Exercise 11).
-- **Mehrere Browser:** Konfiguriere `playwright.config.ts` (TS) oder `[BrowserType]`-Attribute (C#), damit Tests in Chromium, Firefox und WebKit laufen.
-
----
-
-## Exercise 12 – Playwright MCP Server
-
-### Hintergrund
-
-Der **Playwright MCP Server** (Model Context Protocol) ermöglicht es KI-Assistenten wie GitHub Copilot oder Claude, direkt mit einem echten Browser zu interagieren – navigieren, klicken, Inhalte lesen, Screenshots aufnehmen – ohne eigenen Playwright-Code schreiben zu müssen.
-
-> **Model Context Protocol (MCP)** ist ein offener Standard, über den KI-Tools Werkzeuge (Tools) aufrufen können. Der Playwright MCP Server stellt Browser-Aktionen als solche Tools bereit.
-
-Typische Anwendungsfälle:
-- KI-gestütztes Explorieren einer unbekannten Web-App
-- Automatisches Generieren von Testideen aus dem laufenden Browser-Kontext
-- Interaktives Debuggen: „Warum schlägt dieser Test fehl?"
-- Barrierefreiheits-Checks direkt durch den KI-Assistenten
-
----
-
-### Setup
-
-#### Voraussetzungen
-
-| Werkzeug | Zweck |
-|----------|-------|
-| Node.js 18+ | MCP Server läuft als Node-Prozess |
-| GitHub Copilot (VS Code) **oder** Claude Desktop | MCP-Client |
-| `@playwright/mcp` npm-Paket | Der MCP Server selbst |
-
-#### 🟦 VS Code + GitHub Copilot
-
-**Option A – automatisch per `mcp.json`:**
-
-Lege `.vscode/mcp.json` im Repo an (oder nutze die globale User-Settings):
-
-```json
-{
-  "servers": {
-    "playwright": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["@playwright/mcp@latest"]
-    }
-  }
-}
-```
-
-Alternativ headless deaktivieren (sichtbarer Browser):
-
-```json
-{
-  "servers": {
-    "playwright": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["@playwright/mcp@latest", "--headless=false"]
-    }
-  }
-}
-```
-
-Danach: `Ctrl+Shift+P` → **MCP: List Servers** → `playwright` sollte als `running` erscheinen.
-
-**Option B – über VS Code Settings UI:**
-
-`Ctrl+,` → Suche nach `mcp` → **Edit in settings.json** → gleiche JSON-Struktur wie oben einfügen.
-
-#### 🟪 Visual Studio (Windows)
-
-Visual Studio unterstützt MCP seit Version 17.14 Preview (GitHub Copilot Chat).  
-Lege eine globale MCP-Konfigurationsdatei an:
-
-```
-%USERPROFILE%\.mcp\mcp.json
-```
-
-```json
-{
-  "servers": {
-    "playwright": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["@playwright/mcp@latest", "--headless=false"]
-    }
-  }
-}
-```
-
-Danach Visual Studio neu starten → im **Copilot Chat**-Fenster erscheint ein 🔧-Icon, das die verfügbaren MCP-Tools anzeigt.
-
-> ℹ️ Stelle sicher, dass Copilot Chat im **Agent-Modus** läuft (`@agent`), damit MCP-Tools genutzt werden können.
-
----
-
-### Teil A – Browser-Navigation durch den KI-Assistenten
-
-#### Aufgabe
-
-Starte den MCP Server und lass den KI-Assistenten die TodoMatic-App erkunden.
-
-1. Starte die App: `npm run dev`
-2. Öffne Copilot Chat (VS Code: `Ctrl+Alt+I` | Visual Studio: `View` → `GitHub Copilot Chat`)
-3. Stelle sicher, dass du im **Agent-Modus** bist (VS Code: wähle `Agent` im Dropdown, Visual Studio: `@agent`)
-4. Gib folgende Prompts ein und beobachte, wie der Assistent den Browser steuert:
-
-```
-Öffne http://localhost:3000 und beschreibe mir, welche UI-Elemente auf der Seite vorhanden sind.
-```
-
-```
-Navigiere zur TodoMatic-App, füge eine neue Aufgabe mit dem Namen "MCP-Test" hinzu und mache einen Screenshot.
-```
-
-```
-Welche data-testid-Attribute sind auf der Seite vorhanden? Liste sie auf.
-```
-
-#### Was passiert im Hintergrund?
-
-Der KI-Assistent ruft über MCP Browser-Tools auf, z. B.:
-- `browser_navigate` – URL öffnen
-- `browser_snapshot` – Accessibility-Tree auslesen
-- `browser_click` – Element anklicken
-- `browser_type` – Text eingeben
-- `browser_take_screenshot` – Screenshot aufnehmen
-
----
-
-### Teil B – Testideen generieren lassen
-
-#### Aufgabe
-
-Lass den Assistenten basierend auf dem Live-Browser-Kontext Testideen vorschlagen.
-
-```
-Schau dir die TodoMatic-App unter http://localhost:3000 an und schlage mir 5 sinnvolle Playwright-Testfälle vor. Berücksichtige dabei alle sichtbaren Features.
-```
-
-```
-Generiere für den Filter-Bereich der TodoMatic-App einen vollständigen Playwright-Test in TypeScript, der alle drei Filter (All, Active, Completed) testet.
-```
-
-```
-Generiere denselben Test als C# NUnit-Test.
-```
-
-Vergleiche den generierten Code mit deinen manuell geschriebenen Tests aus Exercise 4 (Filter). Was sind Unterschiede und Gemeinsamkeiten?
-
----
-
-### Teil C – Fehleranalyse mit MCP-Unterstützung
-
-#### Aufgabe
-
-Nutze den MCP Server, um einen fehlschlagenden Test zu analysieren.
-
-1. Nimm den absichtlich fehlschlagenden Test aus Exercise 9 (Trace Viewer) – oder schreibe einen neuen, der fehlschlägt.
-2. Frage den Assistenten:
-
-```
-Mein Playwright-Test schlägt fehl. Öffne http://localhost:3000 und prüfe, ob der Text "Diese Aufgabe gibt es nicht" tatsächlich auf der Seite vorhanden ist. Was siehst du stattdessen?
-```
-
-```
-Schau dir die aktuelle Seite an und erkläre mir, warum folgender Locator möglicherweise nicht funktioniert: page.getByText('Diese Aufgabe gibt es nicht')
-```
-
----
-
-### Lösungshinweis – Vollständiges Setup und Beispiel-Prompt-Sequenz
-
-<details>
-<summary>Hinweis anzeigen</summary>
-
-**Schritt-für-Schritt-Ablauf (VS Code):**
-
-1. App starten: `npm run dev`
-2. `.vscode/mcp.json` anlegen (siehe Setup oben)
-3. VS Code neu laden: `Ctrl+Shift+P` → `Developer: Reload Window`
-4. MCP-Status prüfen: `Ctrl+Shift+P` → `MCP: List Servers` → playwright = running
-5. Copilot Chat öffnen: `Ctrl+Alt+I`
-6. Agent-Modus aktivieren: im Dropdown `Agent` wählen
-7. Prompt eingeben:
-
-```
-Öffne http://localhost:3000, klicke auf den "Edit"-Button der Aufgabe "test",
-ändere den Namen zu "MCP-Aufgabe" und klicke auf "Save".
-Mache danach einen Screenshot und zeige mir, ob die Änderung sichtbar ist.
-```
-
-**Erwartetes Verhalten:** Der Assistent öffnet den Browser, führt die Schritte aus und antwortet mit einem Screenshot und einer Beschreibung der Seite nach der Änderung.
-
-**Typische MCP-Tool-Aufrufe in diesem Ablauf:**
-```
-browser_navigate("http://localhost:3000")
-browser_snapshot()                         → liest Accessibility-Tree
-browser_click(ref="Edit-Button")
-browser_type(ref="Textfeld", text="MCP-Aufgabe")
-browser_click(ref="Save-Button")
-browser_take_screenshot()
-```
-
-</details>
-
----
-
-### Wichtige Hinweise
-
-| Hinweis | Details |
-|---------|---------|
-| **Geolocation** | Der MCP-Browser kennt keine automatische Geolocation-Freigabe. Beim Hinzufügen von Aufgaben via MCP muss der Browser manuell die Berechtigung erteilen – oder die App reagiert nicht. |
-| **Headless vs. sichtbar** | `--headless=false` empfohlen, um zu sehen, was der Assistent tut |
-| **Kosten** | MCP-Aufrufe zählen als Copilot-Anfragen. Für Workshops: `--headless=true` spart Ressourcen |
-| **Sicherheit** | MCP gibt dem Assistenten echten Browser-Zugriff. Nur vertrauenswürdige MCP-Server einbinden |
 
 ---
 
