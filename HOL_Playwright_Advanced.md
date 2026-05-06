@@ -906,239 +906,7 @@ Schränkt einen breiten Locator auf Elemente ein, die bestimmten Text enthalten.
 
 ---
 
-## Exercise 4: Page Object Model – Wartbarkeit und Wiederverwendung
-
-**Ziel:** Locatoren und Aktionen in einer Klasse kapseln, statt sie in jedem Test zu wiederholen. Das liefert drei konkrete Vorteile:
-
-1. **Wartbarkeit:** Ändert sich z. B. `#myUniqueID` zu `#add-btn`, wird nur **eine Stelle** angepasst – alle Tests laufen sofort wieder
-2. **Wiederverwendung:** `addTask()`, `deleteTask()` usw. werden von vielen Tests genutzt – kein Copy-Paste, kein Drift
-3. **Lesbarkeit:** Tests beschreiben *Was* getestet wird, nicht *Wie* das DOM navigiert wird
-
-**Aufgabe:**
-
-1. Erstelle eine `TodoPage`-Klasse mit Locatoren als Properties und Aktionen als Methoden
-2. Schreibe die Tests aus Exercise 2 und 3 damit neu – beobachte, wie viel kürzer sie werden
-3. Schreibe einen neuen Test für den vollständigen Task-Lifecycle (hinzufügen → bearbeiten → abschließen → filtern → löschen) in wenigen, gut lesbaren Zeilen
-
-<details>
-<summary>💡 Lösungshinweis TypeScript – Page Object</summary>
-
-`tests/pages/TodoPage.ts`:
-
-```typescript
-import { type Page, type Locator, expect } from "@playwright/test";
-
-export class TodoPage {
-  // ── Locatoren als readonly Properties ──────────────────────────────────────
-  // Einmal definiert – wenn sich ein Selektor ändert, nur hier anpassen.
-  readonly addInput: Locator;
-  readonly addButton: Locator;
-  readonly taskCount: Locator;
-  readonly filterAll: Locator;
-  readonly filterActive: Locator;
-  readonly filterCompleted: Locator;
-  readonly loadRemoteButton: Locator;
-
-  constructor(private readonly page: Page) {
-    this.addInput         = page.locator("#new-todo-input");
-    this.addButton        = page.locator("#myUniqueID");
-    this.taskCount        = page.locator("#list-heading");
-    this.filterAll        = page.getByTestId("testID-All");
-    this.filterActive     = page.getByTestId("testID-Active");
-    this.filterCompleted  = page.getByTestId("testID-Completed");
-    this.loadRemoteButton = page.getByRole("button", { name: "Load remote tasks" });
-  }
-
-  // ── Dynamische Locatoren als Methoden ──────────────────────────────────────
-  taskItem(name: string): Locator {
-    return this.page.getByRole("listitem").filter({ hasText: name });
-  }
-  taskList(): Locator { return this.page.getByRole("list"); }
-
-  // ── Aktionen ───────────────────────────────────────────────────────────────
-  async goto(): Promise<void> { await this.page.goto("/"); }
-
-  async addTask(name: string): Promise<void> {
-    await this.addInput.fill(name);
-    await this.addButton.click();
-    await expect(this.taskList().getByText(name)).toBeVisible();
-  }
-
-  async deleteTask(name: string): Promise<void> {
-    await this.taskItem(name).getByRole("button", { name: "Delete" }).click();
-    await expect(this.taskList().getByText(name)).not.toBeVisible();
-  }
-
-  async editTask(oldName: string, newName: string): Promise<void> {
-    const item = this.taskItem(oldName);
-    await item.getByRole("button", { name: "Edit" }).click();
-    await item.getByRole("textbox").fill(newName);
-    await item.getByRole("button", { name: "Save" }).click();
-    await expect(this.taskList().getByText(newName)).toBeVisible();
-  }
-
-  async completeTask(name: string): Promise<void> {
-    await this.taskItem(name).getByRole("checkbox").check();
-  }
-
-  async setFilter(filter: "All" | "Active" | "Completed"): Promise<void> {
-    const btn = { All: this.filterAll, Active: this.filterActive,
-                  Completed: this.filterCompleted }[filter];
-    await btn.click();
-  }
-
-  async getTaskCount(): Promise<number> {
-    const text = await this.taskCount.textContent();
-    return parseInt(text?.match(/\d+/)?.[0] ?? "0");
-  }
-}
-```
-
-`tests/pom.spec.ts`:
-
-```typescript
-import { test, expect } from "@playwright/test";
-import { TodoPage } from "./pages/TodoPage";
-
-test.use({
-  geolocation: { latitude: 48.1372, longitude: 11.5755 },
-  permissions: ["geolocation"],
-});
-
-test("full task lifecycle – lesbarer dank POM", async ({ page }) => {
-  const todo = new TodoPage(page);
-  await todo.goto();
-
-  await todo.addTask("Einkaufen");
-  await todo.editTask("Einkaufen", "Einkaufen gehen");
-  await todo.completeTask("Einkaufen gehen");
-  await todo.setFilter("Completed");
-  await expect(todo.taskItem("Einkaufen gehen")).toBeVisible();
-  await todo.setFilter("All");
-  await todo.deleteTask("Einkaufen gehen");
-  expect(await todo.getTaskCount()).toBe(1); // zurück auf initiale Aufgabe
-});
-```
-
-**Wartbarkeit prüfen:** Ändere im `TodoPage`-Konstruktor `"#myUniqueID"` zu `"#add-task-btn"` – alle Tests schlagen fehl. Ändere es zurück – alle Tests laufen wieder. Kein einziger Test wurde angefasst.
-
-</details>
-
-<details>
-<summary>💡 Lösungshinweis C# – Page Object (framework-unabhängig)</summary>
-
-`Pages/TodoPage.cs` – wird von MSTest, NUnit und xUnit gleich verwendet:
-
-```csharp
-using Microsoft.Playwright;
-
-public class TodoPage
-{
-    private readonly IPage _page;
-
-    // ── Locatoren als Properties ───────────────────────────────────────────────
-    // Lazy evaluation: kein DOM-Lookup beim Erstellen des Page Objects
-    public ILocator AddInput        => _page.Locator("#new-todo-input");
-    public ILocator AddButton       => _page.Locator("#myUniqueID");
-    public ILocator TaskCount       => _page.Locator("#list-heading");
-    public ILocator FilterAll       => _page.GetByTestId("testID-All");
-    public ILocator FilterActive    => _page.GetByTestId("testID-Active");
-    public ILocator FilterCompleted => _page.GetByTestId("testID-Completed");
-    public ILocator TaskList        => _page.GetByRole(AriaRole.List);
-
-    public TodoPage(IPage page) => _page = page;
-
-    // ── Dynamische Locatoren ───────────────────────────────────────────────────
-    public ILocator TaskItem(string name) =>
-        _page.GetByRole(AriaRole.Listitem).Filter(new() { HasText = name });
-
-    // ── Aktionen ───────────────────────────────────────────────────────────────
-    public Task GotoAsync() => _page.GotoAsync("http://localhost:3000");
-
-    public async Task AddTaskAsync(string name)
-    {
-        await AddInput.FillAsync(name);
-        await AddButton.ClickAsync();
-        await Assertions.Expect(TaskList.GetByText(name)).ToBeVisibleAsync();
-    }
-
-    public async Task DeleteTaskAsync(string name)
-    {
-        await TaskItem(name).GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
-        await Assertions.Expect(TaskList.GetByText(name)).Not.ToBeVisibleAsync();
-    }
-
-    public async Task EditTaskAsync(string oldName, string newName)
-    {
-        var item = TaskItem(oldName);
-        await item.GetByRole(AriaRole.Button, new() { Name = "Edit" }).ClickAsync();
-        await item.GetByRole(AriaRole.Textbox).FillAsync(newName);
-        await item.GetByRole(AriaRole.Button, new() { Name = "Save" }).ClickAsync();
-        await Assertions.Expect(TaskList.GetByText(newName)).ToBeVisibleAsync();
-    }
-
-    public Task CompleteTaskAsync(string name) =>
-        TaskItem(name).GetByRole(AriaRole.Checkbox).CheckAsync();
-
-    public Task SetFilterAsync(string filter)
-    {
-        var btn = filter switch
-        {
-            "Active"    => FilterActive,
-            "Completed" => FilterCompleted,
-            _           => FilterAll,
-        };
-        return btn.ClickAsync();
-    }
-
-    public async Task<int> GetTaskCountAsync()
-    {
-        var text = await TaskCount.TextContentAsync();
-        return int.Parse(Regex.Match(text ?? "0", @"\d+").Value);
-    }
-}
-```
-
-Tests (MSTest – NUnit/xUnit analog):
-
-```csharp
-[TestClass]
-public class PomTests : PageTest
-{
-    public override BrowserNewContextOptions ContextOptions() => new()
-    {
-        BaseURL = "http://localhost:3000",
-        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
-        Permissions = new[] { "geolocation" },
-    };
-
-    [TestMethod]   // NUnit: [Test]   xUnit: [Fact]
-    public async Task FullTaskLifecycle()
-    {
-        var todo = new TodoPage(Page);
-        await todo.GotoAsync();
-
-        await todo.AddTaskAsync("Einkaufen");
-        await todo.EditTaskAsync("Einkaufen", "Einkaufen gehen");
-        await todo.CompleteTaskAsync("Einkaufen gehen");
-        await todo.SetFilterAsync("Completed");
-        await Expect(todo.TaskItem("Einkaufen gehen")).ToBeVisibleAsync();
-        await todo.SetFilterAsync("All");
-        await todo.DeleteTaskAsync("Einkaufen gehen");
-        Assert.AreEqual(1, await todo.GetTaskCountAsync());
-    }
-}
-```
-
-**NUnit:** `[TestFixture]` + `[Test]` + `Microsoft.Playwright.NUnit.PageTest`  
-**xUnit:** kein Klassenattribut + `[Fact]` + `Microsoft.Playwright.Xunit.PageTest`  
-**Das `TodoPage`-Objekt selbst bleibt identisch** – es ist framework-unabhängig.
-
-</details>
-
----
-
-## Exercise 5: Filter-Funktionalität testen
+## Exercise 4: Filter-Funktionalität testen
 
 **Ziel:** Zustandsabhängige UI-Tests – prüfe, dass All/Active/Completed die Liste korrekt filtern.
 
@@ -1272,7 +1040,7 @@ public class FilterTests : PageTest
 
 ---
 
-## Exercise 6: Netzwerk-Mocking – Remote-Tasks abfangen
+## Exercise 5: Netzwerk-Mocking – Remote-Tasks abfangen
 
 **Ziel:** `page.route()` / `Page.RouteAsync()` einsetzen, um HTTP-Anfragen abzufangen und durch Testdaten zu ersetzen.
 
@@ -1435,7 +1203,7 @@ public class NetworkMockTests : PageTest
 
 ---
 
-## Exercise 7: Response-Manipulation – Logo durch Testbild ersetzen
+## Exercise 6: Response-Manipulation – Logo durch Testbild ersetzen
 
 **Ziel:** Das fortgeschrittene Route-Pattern: Echten Request abschicken, dann nur den Body ersetzen. Inspiriert vom "Holiday Theme"-Demo der [norschel/PlaywrightDemos](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_IT_Tage_2025.cs).
 
@@ -1553,7 +1321,7 @@ Dieses `FetchAsync()`-Pattern ist die Kernidee des "Santa Hat"-Demos aus dem [IT
 
 ---
 
-## Exercise 8: Screenshots, Video und Traces – Diagnose-Werkzeuge aktiv nutzen
+## Exercise 7: Screenshots, Video und Traces – Diagnose-Werkzeuge aktiv nutzen
 
 **Ziel:** Die drei wichtigsten Diagnose-Werkzeuge von Playwright gezielt einsetzen – für lokales Debugging und CI-Fehleranalyse.
 
@@ -1943,7 +1711,7 @@ public class TraceTests : PageTest
 
 ---
 
-## Exercise 9: Mobile Device Emulation
+## Exercise 8: Mobile Device Emulation
 
 **Ziel:** Die App auf Mobilgeräten testen – Viewport, User-Agent, Touch-Events und Pixel-Ratio werden automatisch gesetzt.
 
@@ -2042,7 +1810,7 @@ foreach (var device in Playwright.Devices.Keys)
 
 ---
 
-## Exercise 10: Cross-Browser Testing
+## Exercise 9: Cross-Browser Testing
 
 **Ziel:** Tests parallel in Chromium, Firefox und WebKit (Safari) ausführen.
 
@@ -2139,7 +1907,7 @@ dotnet test --filter "TestCategory=firefox"
 
 ---
 
-## Exercise 11: JavaScript in die Seite injizieren mit `page.evaluate()`
+## Exercise 10: JavaScript in die Seite injizieren mit `page.evaluate()`
 
 **Ziel:** Das fortgeschrittenste Feature – JavaScript direkt im Browser-Kontext ausführen. Inspiriert vom spektakulären Canvas-Overlay-Demo aus den [PlaywrightDemos BASTA! Spring 2026](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_BastaSpring2026.cs).
 
@@ -2319,6 +2087,238 @@ public class EvaluateTests : PageTest
 
 **Direkt aus PlaywrightDemos:**  
 Der [BASTA! Spring 2026 Demo](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_BastaSpring2026.cs) injiziert per `EvaluateAsync` einen animierten Osterhasen (gezeichnet mit Canvas 2D API) und spielt "Häschen in der Grube" über die Web Audio API ab – alles live auf einer echten Konferenz-Website während des Vortrags.
+
+</details>
+
+---
+
+## Exercise 11: Page Object Model – Wartbarkeit und Wiederverwendung
+
+**Ziel:** Locatoren und Aktionen in einer Klasse kapseln, statt sie in jedem Test zu wiederholen. Das liefert drei konkrete Vorteile:
+
+1. **Wartbarkeit:** Ändert sich z. B. `#myUniqueID` zu `#add-btn`, wird nur **eine Stelle** angepasst – alle Tests laufen sofort wieder
+2. **Wiederverwendung:** `addTask()`, `deleteTask()` usw. werden von vielen Tests genutzt – kein Copy-Paste, kein Drift
+3. **Lesbarkeit:** Tests beschreiben *Was* getestet wird, nicht *Wie* das DOM navigiert wird
+
+**Aufgabe:**
+
+1. Erstelle eine `TodoPage`-Klasse mit Locatoren als Properties und Aktionen als Methoden
+2. Schreibe die Tests aus Exercise 2 und 3 damit neu – beobachte, wie viel kürzer sie werden
+3. Schreibe einen neuen Test für den vollständigen Task-Lifecycle (hinzufügen → bearbeiten → abschließen → filtern → löschen) in wenigen, gut lesbaren Zeilen
+
+<details>
+<summary>💡 Lösungshinweis TypeScript – Page Object</summary>
+
+`tests/pages/TodoPage.ts`:
+
+```typescript
+import { type Page, type Locator, expect } from "@playwright/test";
+
+export class TodoPage {
+  // ── Locatoren als readonly Properties ──────────────────────────────────────
+  // Einmal definiert – wenn sich ein Selektor ändert, nur hier anpassen.
+  readonly addInput: Locator;
+  readonly addButton: Locator;
+  readonly taskCount: Locator;
+  readonly filterAll: Locator;
+  readonly filterActive: Locator;
+  readonly filterCompleted: Locator;
+  readonly loadRemoteButton: Locator;
+
+  constructor(private readonly page: Page) {
+    this.addInput         = page.locator("#new-todo-input");
+    this.addButton        = page.locator("#myUniqueID");
+    this.taskCount        = page.locator("#list-heading");
+    this.filterAll        = page.getByTestId("testID-All");
+    this.filterActive     = page.getByTestId("testID-Active");
+    this.filterCompleted  = page.getByTestId("testID-Completed");
+    this.loadRemoteButton = page.getByRole("button", { name: "Load remote tasks" });
+  }
+
+  // ── Dynamische Locatoren als Methoden ──────────────────────────────────────
+  taskItem(name: string): Locator {
+    return this.page.getByRole("listitem").filter({ hasText: name });
+  }
+  taskList(): Locator { return this.page.getByRole("list"); }
+
+  // ── Aktionen ───────────────────────────────────────────────────────────────
+  async goto(): Promise<void> { await this.page.goto("/"); }
+
+  async addTask(name: string): Promise<void> {
+    await this.addInput.fill(name);
+    await this.addButton.click();
+    await expect(this.taskList().getByText(name)).toBeVisible();
+  }
+
+  async deleteTask(name: string): Promise<void> {
+    await this.taskItem(name).getByRole("button", { name: "Delete" }).click();
+    await expect(this.taskList().getByText(name)).not.toBeVisible();
+  }
+
+  async editTask(oldName: string, newName: string): Promise<void> {
+    const item = this.taskItem(oldName);
+    await item.getByRole("button", { name: "Edit" }).click();
+    await item.getByRole("textbox").fill(newName);
+    await item.getByRole("button", { name: "Save" }).click();
+    await expect(this.taskList().getByText(newName)).toBeVisible();
+  }
+
+  async completeTask(name: string): Promise<void> {
+    await this.taskItem(name).getByRole("checkbox").check();
+  }
+
+  async setFilter(filter: "All" | "Active" | "Completed"): Promise<void> {
+    const btn = { All: this.filterAll, Active: this.filterActive,
+                  Completed: this.filterCompleted }[filter];
+    await btn.click();
+  }
+
+  async getTaskCount(): Promise<number> {
+    const text = await this.taskCount.textContent();
+    return parseInt(text?.match(/\d+/)?.[0] ?? "0");
+  }
+}
+```
+
+`tests/pom.spec.ts`:
+
+```typescript
+import { test, expect } from "@playwright/test";
+import { TodoPage } from "./pages/TodoPage";
+
+test.use({
+  geolocation: { latitude: 48.1372, longitude: 11.5755 },
+  permissions: ["geolocation"],
+});
+
+test("full task lifecycle – lesbarer dank POM", async ({ page }) => {
+  const todo = new TodoPage(page);
+  await todo.goto();
+
+  await todo.addTask("Einkaufen");
+  await todo.editTask("Einkaufen", "Einkaufen gehen");
+  await todo.completeTask("Einkaufen gehen");
+  await todo.setFilter("Completed");
+  await expect(todo.taskItem("Einkaufen gehen")).toBeVisible();
+  await todo.setFilter("All");
+  await todo.deleteTask("Einkaufen gehen");
+  expect(await todo.getTaskCount()).toBe(1); // zurück auf initiale Aufgabe
+});
+```
+
+**Wartbarkeit prüfen:** Ändere im `TodoPage`-Konstruktor `"#myUniqueID"` zu `"#add-task-btn"` – alle Tests schlagen fehl. Ändere es zurück – alle Tests laufen wieder. Kein einziger Test wurde angefasst.
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C# – Page Object (framework-unabhängig)</summary>
+
+`Pages/TodoPage.cs` – wird von MSTest, NUnit und xUnit gleich verwendet:
+
+```csharp
+using Microsoft.Playwright;
+
+public class TodoPage
+{
+    private readonly IPage _page;
+
+    // ── Locatoren als Properties ───────────────────────────────────────────────
+    // Lazy evaluation: kein DOM-Lookup beim Erstellen des Page Objects
+    public ILocator AddInput        => _page.Locator("#new-todo-input");
+    public ILocator AddButton       => _page.Locator("#myUniqueID");
+    public ILocator TaskCount       => _page.Locator("#list-heading");
+    public ILocator FilterAll       => _page.GetByTestId("testID-All");
+    public ILocator FilterActive    => _page.GetByTestId("testID-Active");
+    public ILocator FilterCompleted => _page.GetByTestId("testID-Completed");
+    public ILocator TaskList        => _page.GetByRole(AriaRole.List);
+
+    public TodoPage(IPage page) => _page = page;
+
+    // ── Dynamische Locatoren ───────────────────────────────────────────────────
+    public ILocator TaskItem(string name) =>
+        _page.GetByRole(AriaRole.Listitem).Filter(new() { HasText = name });
+
+    // ── Aktionen ───────────────────────────────────────────────────────────────
+    public Task GotoAsync() => _page.GotoAsync("http://localhost:3000");
+
+    public async Task AddTaskAsync(string name)
+    {
+        await AddInput.FillAsync(name);
+        await AddButton.ClickAsync();
+        await Assertions.Expect(TaskList.GetByText(name)).ToBeVisibleAsync();
+    }
+
+    public async Task DeleteTaskAsync(string name)
+    {
+        await TaskItem(name).GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+        await Assertions.Expect(TaskList.GetByText(name)).Not.ToBeVisibleAsync();
+    }
+
+    public async Task EditTaskAsync(string oldName, string newName)
+    {
+        var item = TaskItem(oldName);
+        await item.GetByRole(AriaRole.Button, new() { Name = "Edit" }).ClickAsync();
+        await item.GetByRole(AriaRole.Textbox).FillAsync(newName);
+        await item.GetByRole(AriaRole.Button, new() { Name = "Save" }).ClickAsync();
+        await Assertions.Expect(TaskList.GetByText(newName)).ToBeVisibleAsync();
+    }
+
+    public Task CompleteTaskAsync(string name) =>
+        TaskItem(name).GetByRole(AriaRole.Checkbox).CheckAsync();
+
+    public Task SetFilterAsync(string filter)
+    {
+        var btn = filter switch
+        {
+            "Active"    => FilterActive,
+            "Completed" => FilterCompleted,
+            _           => FilterAll,
+        };
+        return btn.ClickAsync();
+    }
+
+    public async Task<int> GetTaskCountAsync()
+    {
+        var text = await TaskCount.TextContentAsync();
+        return int.Parse(Regex.Match(text ?? "0", @"\d+").Value);
+    }
+}
+```
+
+Tests (MSTest – NUnit/xUnit analog):
+
+```csharp
+[TestClass]
+public class PomTests : PageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        BaseURL = "http://localhost:3000",
+        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
+        Permissions = new[] { "geolocation" },
+    };
+
+    [TestMethod]   // NUnit: [Test]   xUnit: [Fact]
+    public async Task FullTaskLifecycle()
+    {
+        var todo = new TodoPage(Page);
+        await todo.GotoAsync();
+
+        await todo.AddTaskAsync("Einkaufen");
+        await todo.EditTaskAsync("Einkaufen", "Einkaufen gehen");
+        await todo.CompleteTaskAsync("Einkaufen gehen");
+        await todo.SetFilterAsync("Completed");
+        await Expect(todo.TaskItem("Einkaufen gehen")).ToBeVisibleAsync();
+        await todo.SetFilterAsync("All");
+        await todo.DeleteTaskAsync("Einkaufen gehen");
+        Assert.AreEqual(1, await todo.GetTaskCountAsync());
+    }
+}
+```
+
+**NUnit:** `[TestFixture]` + `[Test]` + `Microsoft.Playwright.NUnit.PageTest`  
+**xUnit:** kein Klassenattribut + `[Fact]` + `Microsoft.Playwright.Xunit.PageTest`  
+**Das `TodoPage`-Objekt selbst bleibt identisch** – es ist framework-unabhängig.
 
 </details>
 
@@ -2984,21 +2984,21 @@ Screenshot der TodoMatic-App. Ist die App mobil nutzbar?
 
 | Konzept | TypeScript API | C# API | Framework | Übung |
 |---|---|---|---|---|
-| Navigation | `page.goto()` | `Page.GotoAsync()` | alle | 1–13 |
+| Navigation | `page.goto()` | `Page.GotoAsync()` | alle | 1–14 |
 | ARIA-Locatoren | `getByRole()`, `getByTestId()` | `GetByRole()`, `GetByTestId()` | alle | 1, 3 |
 | Formular | `fill()`, `click()`, `check()` | `FillAsync()`, `ClickAsync()` | alle | 2, 3 |
-| Locator-Chaining | `.filter({ hasText })` | `.Filter(new() { HasText })` | alle | 3, 5 |
-| **Page Object Model** | Klasse + Properties + Methoden | Klasse + Properties + Methoden | alle | **4** |
-| Geolocation mock | `test.use({ geolocation })` | `ContextOptions()` override | alle | 2, 4, 9 |
-| Network mock | `page.route()` + `fulfill()` | `RouteAsync()` + `FulfillAsync()` | alle | 6, 7 |
-| Response-Manipulation | `route.fetch()` | `route.FetchAsync()` | alle | 7 |
-| **Screenshots** | `page.screenshot()` | `ScreenshotAsync()` | alle | **8** |
-| **Video** | `video: "retain-on-failure"` | `PLAYWRIGHT_VIDEO=on` | alle | **8** |
-| **Trace Viewer** | `show-trace trace.zip` | `playwright.ps1 show-trace` | alle | **8** |
-| Mobile Emulation | `devices["iPhone 15 Pro"]` | `Playwright.Devices[...]` | alle | 9 |
-| Cross-Browser TS | `projects` in Config | – | TypeScript | 10 |
-| Cross-Browser C# | – | `[DataRow]`/`[TestCase]`/`[InlineData]` | MSTest/NUnit/xUnit | 10 |
-| JS-Injektion | `page.evaluate()` | `Page.EvaluateAsync()` | alle | 11 |
+| Locator-Chaining | `.filter({ hasText })` | `.Filter(new() { HasText })` | alle | 3, 4 |
+| Geolocation mock | `test.use({ geolocation })` | `ContextOptions()` override | alle | 2, 11 |
+| Network mock | `page.route()` + `fulfill()` | `RouteAsync()` + `FulfillAsync()` | alle | 5, 6 |
+| Response-Manipulation | `route.fetch()` | `route.FetchAsync()` | alle | 6 |
+| **Screenshots** | `page.screenshot()` | `ScreenshotAsync()` | alle | **7** |
+| **Video** | `video: "retain-on-failure"` | `PLAYWRIGHT_VIDEO=on` | alle | **7** |
+| **Trace Viewer** | `show-trace trace.zip` | `playwright.ps1 show-trace` | alle | **7** |
+| Mobile Emulation | `devices["iPhone 15 Pro"]` | `Playwright.Devices[...]` | alle | 8 |
+| Cross-Browser TS | `projects` in Config | – | TypeScript | 9 |
+| Cross-Browser C# | – | `[DataRow]`/`[TestCase]`/`[InlineData]` | MSTest/NUnit/xUnit | 9 |
+| JS-Injektion | `page.evaluate()` | `Page.EvaluateAsync()` | alle | 10 |
+| **Page Object Model** | Klasse + Properties + Methoden | Klasse + Properties + Methoden | alle | **11** |
 | Codegen | `npx playwright codegen` | `pwsh playwright.ps1 codegen` | alle | Teil 2 |
 | Inspector | `PWDEBUG=1` / `page.pause()` | `PWDEBUG=1` / `PauseAsync()` | alle | Teil 1 |
 | **Code-Driven** | Von Hand schreiben | Von Hand schreiben | alle | **Teil 2** |
