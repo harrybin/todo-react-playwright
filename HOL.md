@@ -2427,22 +2427,289 @@ Schau dir den Quellcode an und überlege, welche weiteren Tests sinnvoll wären:
 
 ---
 
+## Exercise 12 – Playwright MCP Server
+
+### Hintergrund
+
+Der **Playwright MCP Server** (Model Context Protocol) ermöglicht es KI-Assistenten wie GitHub Copilot oder Claude, direkt mit einem echten Browser zu interagieren – navigieren, klicken, Inhalte lesen, Screenshots aufnehmen – ohne eigenen Playwright-Code schreiben zu müssen.
+
+> **Model Context Protocol (MCP)** ist ein offener Standard, über den KI-Tools Werkzeuge (Tools) aufrufen können. Der Playwright MCP Server stellt Browser-Aktionen als solche Tools bereit.
+
+Typische Anwendungsfälle:
+- KI-gestütztes Explorieren einer unbekannten Web-App
+- Automatisches Generieren von Testideen aus dem laufenden Browser-Kontext
+- Interaktives Debuggen: „Warum schlägt dieser Test fehl?"
+- Barrierefreiheits-Checks direkt durch den KI-Assistenten
+
+---
+
+### Setup
+
+#### Voraussetzungen
+
+| Werkzeug | Zweck |
+|----------|-------|
+| Node.js 18+ | MCP Server läuft als Node-Prozess |
+| GitHub Copilot (VS Code) **oder** Claude Desktop | MCP-Client |
+| `@playwright/mcp` npm-Paket | Der MCP Server selbst |
+
+#### 🟦 VS Code + GitHub Copilot
+
+**Option A – automatisch per `mcp.json`:**
+
+Lege `.vscode/mcp.json` im Repo an (oder nutze die globale User-Settings):
+
+```json
+{
+  "servers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
+  }
+}
+```
+
+Alternativ headless deaktivieren (sichtbarer Browser):
+
+```json
+{
+  "servers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless=false"]
+    }
+  }
+}
+```
+
+Danach: `Ctrl+Shift+P` → **MCP: List Servers** → `playwright` sollte als `running` erscheinen.
+
+**Option B – über VS Code Settings UI:**
+
+`Ctrl+,` → Suche nach `mcp` → **Edit in settings.json** → gleiche JSON-Struktur wie oben einfügen.
+
+#### 🟪 Visual Studio (Windows)
+
+Visual Studio unterstützt MCP seit Version 17.14 Preview (GitHub Copilot Chat).  
+Lege eine globale MCP-Konfigurationsdatei an:
+
+```
+%USERPROFILE%\.mcp\mcp.json
+```
+
+```json
+{
+  "servers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless=false"]
+    }
+  }
+}
+```
+
+Danach Visual Studio neu starten → im **Copilot Chat**-Fenster erscheint ein 🔧-Icon, das die verfügbaren MCP-Tools anzeigt.
+
+> ℹ️ Stelle sicher, dass Copilot Chat im **Agent-Modus** läuft (`@agent`), damit MCP-Tools genutzt werden können.
+
+---
+
+### Teil A – Browser-Navigation durch den KI-Assistenten
+
+#### Aufgabe
+
+Starte den MCP Server und lass den KI-Assistenten die TodoMatic-App erkunden.
+
+1. Starte die App: `npm run dev`
+2. Öffne Copilot Chat (VS Code: `Ctrl+Alt+I` | Visual Studio: `View` → `GitHub Copilot Chat`)
+3. Stelle sicher, dass du im **Agent-Modus** bist (VS Code: wähle `Agent` im Dropdown, Visual Studio: `@agent`)
+4. Gib folgende Prompts ein und beobachte, wie der Assistent den Browser steuert:
+
+```
+Öffne http://localhost:3000 und beschreibe mir, welche UI-Elemente auf der Seite vorhanden sind.
+```
+
+```
+Navigiere zur TodoMatic-App, füge eine neue Aufgabe mit dem Namen "MCP-Test" hinzu und mache einen Screenshot.
+```
+
+```
+Welche data-testid-Attribute sind auf der Seite vorhanden? Liste sie auf.
+```
+
+#### Was passiert im Hintergrund?
+
+Der KI-Assistent ruft über MCP Browser-Tools auf, z. B.:
+- `browser_navigate` – URL öffnen
+- `browser_snapshot` – Accessibility-Tree auslesen
+- `browser_click` – Element anklicken
+- `browser_type` – Text eingeben
+- `browser_take_screenshot` – Screenshot aufnehmen
+
+---
+
+### Teil B – Testideen generieren lassen
+
+#### Aufgabe
+
+Lass den Assistenten basierend auf dem Live-Browser-Kontext Testideen vorschlagen.
+
+```
+Schau dir die TodoMatic-App unter http://localhost:3000 an und schlage mir 5 sinnvolle Playwright-Testfälle vor. Berücksichtige dabei alle sichtbaren Features.
+```
+
+```
+Generiere für den Filter-Bereich der TodoMatic-App einen vollständigen Playwright-Test in TypeScript, der alle drei Filter (All, Active, Completed) testet.
+```
+
+```
+Generiere denselben Test als C# NUnit-Test.
+```
+
+Vergleiche den generierten Code mit deinen manuell geschriebenen Tests aus Exercise 4 (Filter). Was sind Unterschiede und Gemeinsamkeiten?
+
+---
+
+### Teil C – Fehleranalyse mit MCP-Unterstützung
+
+#### Aufgabe
+
+Nutze den MCP Server, um einen fehlschlagenden Test zu analysieren.
+
+1. Nimm den absichtlich fehlschlagenden Test aus Exercise 9 (Trace Viewer) – oder schreibe einen neuen, der fehlschlägt.
+2. Frage den Assistenten:
+
+```
+Mein Playwright-Test schlägt fehl. Öffne http://localhost:3000 und prüfe, ob der Text "Diese Aufgabe gibt es nicht" tatsächlich auf der Seite vorhanden ist. Was siehst du stattdessen?
+```
+
+```
+Schau dir die aktuelle Seite an und erkläre mir, warum folgender Locator möglicherweise nicht funktioniert: page.getByText('Diese Aufgabe gibt es nicht')
+```
+
+---
+
+### Lösungshinweis – Vollständiges Setup und Beispiel-Prompt-Sequenz
+
+<details>
+<summary>Hinweis anzeigen</summary>
+
+**Schritt-für-Schritt-Ablauf (VS Code):**
+
+1. App starten: `npm run dev`
+2. `.vscode/mcp.json` anlegen (siehe Setup oben)
+3. VS Code neu laden: `Ctrl+Shift+P` → `Developer: Reload Window`
+4. MCP-Status prüfen: `Ctrl+Shift+P` → `MCP: List Servers` → playwright = running
+5. Copilot Chat öffnen: `Ctrl+Alt+I`
+6. Agent-Modus aktivieren: im Dropdown `Agent` wählen
+7. Prompt eingeben:
+
+```
+Öffne http://localhost:3000, klicke auf den "Edit"-Button der Aufgabe "test",
+ändere den Namen zu "MCP-Aufgabe" und klicke auf "Save".
+Mache danach einen Screenshot und zeige mir, ob die Änderung sichtbar ist.
+```
+
+**Erwartetes Verhalten:** Der Assistent öffnet den Browser, führt die Schritte aus und antwortet mit einem Screenshot und einer Beschreibung der Seite nach der Änderung.
+
+**Typische MCP-Tool-Aufrufe in diesem Ablauf:**
+```
+browser_navigate("http://localhost:3000")
+browser_snapshot()                         → liest Accessibility-Tree
+browser_click(ref="Edit-Button")
+browser_type(ref="Textfeld", text="MCP-Aufgabe")
+browser_click(ref="Save-Button")
+browser_take_screenshot()
+```
+
+</details>
+
+---
+
+### Wichtige Hinweise
+
+| Hinweis | Details |
+|---------|---------|
+| **Geolocation** | Der MCP-Browser kennt keine automatische Geolocation-Freigabe. Beim Hinzufügen von Aufgaben via MCP muss der Browser manuell die Berechtigung erteilen – oder die App reagiert nicht. |
+| **Headless vs. sichtbar** | `--headless=false` empfohlen, um zu sehen, was der Assistent tut |
+| **Kosten** | MCP-Aufrufe zählen als Copilot-Anfragen. Für Workshops: `--headless=true` spart Ressourcen |
+| **Sicherheit** | MCP gibt dem Assistenten echten Browser-Zugriff. Nur vertrauenswürdige MCP-Server einbinden |
+
+---
+
 ## Ressourcen
+
+### 📚 Playwright – Offizielle Dokumentation
 
 | Thema | TypeScript / JavaScript | C# / .NET |
 |-------|------------------------|-----------|
-| Einstieg | [playwright.dev/docs/intro](https://playwright.dev/docs/intro) | [playwright.dev/dotnet/docs/intro](https://playwright.dev/dotnet/docs/intro) |
-| API-Referenz | [playwright.dev/docs/api](https://playwright.dev/docs/api/class-playwright) | [playwright.dev/dotnet/docs/api](https://playwright.dev/dotnet/docs/api/class-playwright) |
-| Page Object Model | [playwright.dev/docs/pom](https://playwright.dev/docs/pom) | [playwright.dev/dotnet/docs/pom](https://playwright.dev/dotnet/docs/pom) |
-| Netzwerk-Mocking | [playwright.dev/docs/mock](https://playwright.dev/docs/mock) | [playwright.dev/dotnet/docs/mock](https://playwright.dev/dotnet/docs/mock) |
-| Geolocation | [playwright.dev/docs/emulation#geolocation](https://playwright.dev/docs/emulation#geolocation) | [playwright.dev/dotnet/docs/emulation#geolocation](https://playwright.dev/dotnet/docs/emulation#geolocation) |
-| Codegen | [playwright.dev/docs/codegen](https://playwright.dev/docs/codegen) | [playwright.dev/dotnet/docs/codegen](https://playwright.dev/dotnet/docs/codegen) |
-| Trace Viewer | [playwright.dev/docs/trace-viewer](https://playwright.dev/docs/trace-viewer) | [playwright.dev/dotnet/docs/trace-viewer](https://playwright.dev/dotnet/docs/trace-viewer) |
-| VS Code Extension | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=ms-playwright.playwright) | – |
-| Debugging | [playwright.dev/docs/debug](https://playwright.dev/docs/debug) | [playwright.dev/dotnet/docs/debug](https://playwright.dev/dotnet/docs/debug) |
-| Docker Image | [mcr.microsoft.com/playwright](https://mcr.microsoft.com/en-us/product/playwright/about) | [mcr.microsoft.com/playwright/dotnet](https://mcr.microsoft.com/en-us/product/playwright/dotnet/about) |
-| Azure Playwright Service | [learn.microsoft.com/azure/playwright-testing](https://learn.microsoft.com/azure/playwright-testing/quickstart-run-end-to-end-tests) | [learn.microsoft.com/azure/playwright-testing](https://learn.microsoft.com/azure/playwright-testing/quickstart-run-end-to-end-tests?tabs=nunit) |
-| Azure Pipelines | [learn.microsoft.com/azure/devops/pipelines](https://learn.microsoft.com/azure/devops/pipelines/get-started/what-is-azure-pipelines) | [learn.microsoft.com/azure/devops/pipelines](https://learn.microsoft.com/azure/devops/pipelines/get-started/what-is-azure-pipelines) |
+| **Einstieg / Getting Started** | [playwright.dev/docs/intro](https://playwright.dev/docs/intro) | [playwright.dev/dotnet/docs/intro](https://playwright.dev/dotnet/docs/intro) |
+| **API-Referenz** | [playwright.dev/docs/api/class-playwright](https://playwright.dev/docs/api/class-playwright) | [playwright.dev/dotnet/docs/api/class-playwright](https://playwright.dev/dotnet/docs/api/class-playwright) |
+| **Locators** | [playwright.dev/docs/locators](https://playwright.dev/docs/locators) | [playwright.dev/dotnet/docs/locators](https://playwright.dev/dotnet/docs/locators) |
+| **Assertions** | [playwright.dev/docs/test-assertions](https://playwright.dev/docs/test-assertions) | [playwright.dev/dotnet/docs/test-assertions](https://playwright.dev/dotnet/docs/test-assertions) |
+| **Page Object Model** | [playwright.dev/docs/pom](https://playwright.dev/docs/pom) | [playwright.dev/dotnet/docs/pom](https://playwright.dev/dotnet/docs/pom) |
+| **Netzwerk-Mocking** | [playwright.dev/docs/mock](https://playwright.dev/docs/mock) | [playwright.dev/dotnet/docs/mock](https://playwright.dev/dotnet/docs/mock) |
+| **Geolocation / Emulation** | [playwright.dev/docs/emulation](https://playwright.dev/docs/emulation) | [playwright.dev/dotnet/docs/emulation](https://playwright.dev/dotnet/docs/emulation) |
+| **Screenshots** | [playwright.dev/docs/screenshots](https://playwright.dev/docs/screenshots) | [playwright.dev/dotnet/docs/screenshots](https://playwright.dev/dotnet/docs/screenshots) |
+| **Videos** | [playwright.dev/docs/videos](https://playwright.dev/docs/videos) | [playwright.dev/dotnet/docs/videos](https://playwright.dev/dotnet/docs/videos) |
+| **Visuelles Testen** | [playwright.dev/docs/test-snapshots](https://playwright.dev/docs/test-snapshots) | – |
+| **Tracing** | [playwright.dev/docs/trace-viewer-intro](https://playwright.dev/docs/trace-viewer-intro) | [playwright.dev/dotnet/docs/trace-viewer-intro](https://playwright.dev/dotnet/docs/trace-viewer-intro) |
+| **Trace Viewer** | [playwright.dev/docs/trace-viewer](https://playwright.dev/docs/trace-viewer) | [playwright.dev/dotnet/docs/trace-viewer](https://playwright.dev/dotnet/docs/trace-viewer) |
+| **Codegen** | [playwright.dev/docs/codegen](https://playwright.dev/docs/codegen) | [playwright.dev/dotnet/docs/codegen](https://playwright.dev/dotnet/docs/codegen) |
+| **Debugging** | [playwright.dev/docs/debug](https://playwright.dev/docs/debug) | [playwright.dev/dotnet/docs/debug](https://playwright.dev/dotnet/docs/debug) |
+| **CI / GitHub Actions** | [playwright.dev/docs/ci-intro](https://playwright.dev/docs/ci-intro) | [playwright.dev/dotnet/docs/ci-intro](https://playwright.dev/dotnet/docs/ci-intro) |
+| **Docker** | [playwright.dev/docs/docker](https://playwright.dev/docs/docker) | [playwright.dev/dotnet/docs/docker](https://playwright.dev/dotnet/docs/docker) |
+| **Konfiguration** | [playwright.dev/docs/test-configuration](https://playwright.dev/docs/test-configuration) | [playwright.dev/dotnet/docs/test-configuration](https://playwright.dev/dotnet/docs/test-configuration) |
+
+---
+
+### 🔧 Tools & Erweiterungen
+
+| Werkzeug | Link | Zweck |
+|---------|------|-------|
+| VS Code Playwright Extension | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=ms-playwright.playwright) | Tests ausführen, Codegen, Trace Viewer in VS Code |
+| Playwright MCP Server | [github.com/microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) | KI-gesteuerte Browser-Interaktion via MCP |
+| `@playwright/mcp` (npm) | [npmjs.com/package/@playwright/mcp](https://www.npmjs.com/package/@playwright/mcp) | MCP-Paket installieren / ausführen |
+| Playwright Docker Image (TS) | [mcr.microsoft.com/playwright](https://mcr.microsoft.com/en-us/product/playwright/about) | Offizielle Docker-Images für Node.js |
+| Playwright Docker Image (.NET) | [mcr.microsoft.com/playwright/dotnet](https://mcr.microsoft.com/en-us/product/playwright/dotnet/about) | Offizielle Docker-Images für .NET |
+
+---
+
+### ☁️ Azure & CI/CD
+
+| Dienst | Link | Hinweis |
+|--------|------|---------|
+| Azure Playwright Service | [learn.microsoft.com – Quickstart (TS)](https://learn.microsoft.com/azure/playwright-testing/quickstart-run-end-to-end-tests) | Skalierbare Cloud-Ausführung |
+| Azure Playwright Service (.NET) | [learn.microsoft.com – Quickstart (NUnit)](https://learn.microsoft.com/azure/playwright-testing/quickstart-run-end-to-end-tests?tabs=nunit) | NUnit / MSTest Variante |
+| Azure Pipelines Übersicht | [learn.microsoft.com/azure/devops/pipelines](https://learn.microsoft.com/azure/devops/pipelines/get-started/what-is-azure-pipelines) | CI/CD mit Azure DevOps |
+| GitHub Actions für Playwright | [playwright.dev/docs/ci-intro#github-actions](https://playwright.dev/docs/ci-intro#github-actions) | Offizieller GitHub-Actions-Guide |
+
+---
+
+### 📦 NuGet-Pakete (.NET)
+
+| Paket | Link | Framework |
+|-------|------|-----------|
+| `Microsoft.Playwright.NUnit` | [nuget.org/packages/Microsoft.Playwright.NUnit](https://www.nuget.org/packages/Microsoft.Playwright.NUnit) | NUnit |
+| `Microsoft.Playwright.Xunit` | [nuget.org/packages/Microsoft.Playwright.Xunit](https://www.nuget.org/packages/Microsoft.Playwright.Xunit) | xUnit |
+| `Microsoft.Playwright.MSTest` | [nuget.org/packages/Microsoft.Playwright.MSTest](https://www.nuget.org/packages/Microsoft.Playwright.MSTest) | MSTest |
+| `Azure.Developer.MicrosoftPlaywrightTesting.NUnit` | [nuget.org/packages/Azure.Developer.MicrosoftPlaywrightTesting.NUnit](https://www.nuget.org/packages/Azure.Developer.MicrosoftPlaywrightTesting.NUnit) | NUnit + Azure PW Service |
+| `Azure.Developer.MicrosoftPlaywrightTesting.MSTest` | [nuget.org/packages/Azure.Developer.MicrosoftPlaywrightTesting.MSTest](https://www.nuget.org/packages/Azure.Developer.MicrosoftPlaywrightTesting.MSTest) | MSTest + Azure PW Service |
+
+---
+
+### 📦 npm-Pakete (TypeScript / JavaScript)
+
+| Paket | Link | Zweck |
+|-------|------|-------|
+| `@playwright/test` | [npmjs.com/package/@playwright/test](https://www.npmjs.com/package/@playwright/test) | Playwright Test Runner |
+| `@playwright/mcp` | [npmjs.com/package/@playwright/mcp](https://www.npmjs.com/package/@playwright/mcp) | MCP Server |
+| `@azure/microsoft-playwright-testing` | [npmjs.com/package/@azure/microsoft-playwright-testing](https://www.npmjs.com/package/@azure/microsoft-playwright-testing) | Azure Playwright Service |
+| `@axe-core/playwright` | [npmjs.com/package/@axe-core/playwright](https://www.npmjs.com/package/@axe-core/playwright) | Accessibility Testing |
 
 ---
 
