@@ -38,6 +38,30 @@ Nach dieser HOL kannst du:
 
 ---
 
+## Glossar: Playwright-Begriffe auf einen Blick
+
+| Begriff | Bedeutung |
+|---|---|
+| **Locator** | Playwright-Selektor, der ein oder mehrere DOM-Elemente beschreibt. Anders als CSS-Selektoren sind Locatoren "lazy" (führen keine DOM-Suche bei Erstellung durch) und "strict" (schlagen fehl, wenn mehrere Elemente matchen). Beispiele: `getByRole()`, `getByTestId()`, `locator("#id")`. |
+| **ARIA-Locator** | Locator, der auf barrierefreiheits-semantischen Attributen basiert (`role`, `name`, `label`). Robuster als CSS, weil er am UI aus Nutzersicht operiert: `getByRole("button", { name: "Add" })`. |
+| **Fixture** | Wiederverwendbare Test-Ressource, die Playwright vor/nach jedem Test aufbaut und abbaut. Eingebaute Fixtures: `page`, `context`, `browser`, `browserName`. Mit `test.extend()` können eigene Fixtures definiert werden. |
+| **`test.use()`** | Überschreibt Fixture-Konfiguration für alle Tests in einer Datei oder einem `describe`-Block (z. B. `geolocation`, `video`, `viewport`). |
+| **`page.route()`** | Registriert einen Interceptor für HTTP-Requests. Der Callback kann den Request abfangen (`route.fulfill()`), weiterleiten (`route.continue()`) oder erst senden und dann modifizieren (`route.fetch()` + `route.fulfill()`). |
+| **Trace** | Eine komprimierte `.zip`-Datei, die alle Playwright-Aktionen eines Tests aufzeichnet: DOM-Snapshots, Screenshots, Netzwerk-Requests, Konsolen-Ausgaben und Timing. Öffenbar im Trace Viewer. |
+| **Trace Viewer** | Interaktiver Browser-basierter Viewer für Trace-Dateien. Zeigt einen Zeitstrahl aller Aktionen mit DOM-State zu jedem Schritt. Starten mit `npx playwright show-trace trace.zip`. |
+| **Codegen** | Playwright Test Recorder – zeichnet manuelle Browser-Aktionen auf und generiert daraus TypeScript- oder C#-Testcode. Starten mit `npx playwright codegen http://localhost:3000`. |
+| **Inspector** | Interaktiver Debugger, der öffnet, wenn `PWDEBUG=1` gesetzt oder `await page.pause()` aufgerufen wird. Zeigt den aktuellen DOM, ermöglicht schrittweise Ausführung und Locator-Exploration. |
+| **UI Mode** | Modernes lokales Debugging-Tool (seit Playwright 1.32). Öffnet eine eigene Oberfläche mit Test-Baum, Watch-Mode, live DOM-Snapshot und Locator Picker. Start: `npx playwright test --ui`. |
+| **PageTest** | Basisklasse für C#-Tests (`Microsoft.Playwright.MSTest.PageTest` / `NUnit.PageTest` / `Xunit.PageTest`). Stellt `Page`, `Context`, `Browser` und `Playwright` als Properties zur Verfügung. |
+| **Page Object Model (POM)** | Design-Pattern: Locatoren und Aktionen für eine Seite werden in einer eigenen Klasse gekapselt. Tests nutzen nur die Methoden der Page-Object-Klasse, keine rohen Locatoren. Verbessert Wartbarkeit und Lesbarkeit. |
+| **Headless / Headed** | *Headless*: Browser ohne sichtbares Fenster (Standard in CI). *Headed*: Browser mit sichtbarem Fenster (Standard lokal für Debugging). Umschalten: `npx playwright test --headed` / `HEADED=1 dotnet test`. |
+| **`webServer`** | Konfiguration in `playwright.config.ts`, die einen lokalen Dev-Server automatisch vor den Tests startet und danach beendet. Entspricht `npm run dev`. Für C# gibt es kein Äquivalent – App muss manuell gestartet werden. |
+| **Sharding** | Aufteilung der Test-Suite auf mehrere parallele Prozesse oder Maschinen. TypeScript: `--shard=1/4`. Azure Playwright Testing Service ermöglicht bis zu 50 parallele Shard-Container. |
+| **`reuseExistingServer`** | In `playwright.config.ts webServer`: Bei `true` wird kein neuer Server gestartet, wenn Port 3000 bereits belegt ist. In CI sollte dieser Wert `false` sein (`!process.env.CI`), damit kein veralteter Server genutzt wird. |
+| **MCP Server** | *Model Context Protocol Server* – ermöglicht KI-Assistenten (GitHub Copilot, Claude), Playwright-Browser-Tools per natürlicher Sprache zu steuern. Ergänzt den manuellen Testansatz für Exploration und Entwurf. |
+
+---
+
 ## Teil 0: IDE-Setup
 
 ### Visual Studio Code (TypeScript & C#)
@@ -92,12 +116,16 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
-  retries: 1,
+  retries: process.env.CI ? 2 : 0,
   reporter: [["html"], ["list"]],
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+    // Geolocation global – die App benötigt sie für addTask().
+    // Tests ohne addTask() werden durch das Grant nicht beeinträchtigt.
+    geolocation: { latitude: 48.1372, longitude: 11.5755 },
+    permissions: ["geolocation"],
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
@@ -105,7 +133,7 @@ export default defineConfig({
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
   },
 });
 ```
@@ -139,7 +167,11 @@ Du kannst zwischen **MSTest**, **NUnit** und **xUnit** wählen. Alle drei werden
 dotnet new mstest -n TodoPlaywrightTests && cd TodoPlaywrightTests
 dotnet add package Microsoft.Playwright.MSTest
 dotnet build
-pwsh bin/Debug/net8.0/playwright.ps1 install
+# Playwright-Browser installieren – Pfad hängt vom Build-Ordner ab:
+pwsh bin/Debug/net8.0/playwright.ps1 install   # .NET 8, Debug
+# pwsh bin/Debug/net9.0/playwright.ps1 install # .NET 9
+# Alternativ (framework-unabhängig):
+# dotnet tool install --global Microsoft.Playwright.CLI && playwright install
 ```
 
 **NUnit einrichten:**
@@ -148,7 +180,7 @@ pwsh bin/Debug/net8.0/playwright.ps1 install
 dotnet new nunit -n TodoPlaywrightTests && cd TodoPlaywrightTests
 dotnet add package Microsoft.Playwright.NUnit
 dotnet build
-pwsh bin/Debug/net8.0/playwright.ps1 install
+pwsh bin/Debug/net8.0/playwright.ps1 install   # Pfad wie oben
 ```
 
 **xUnit einrichten:**
@@ -157,10 +189,12 @@ pwsh bin/Debug/net8.0/playwright.ps1 install
 dotnet new xunit -n TodoPlaywrightTests && cd TodoPlaywrightTests
 dotnet add package Microsoft.Playwright.Xunit
 dotnet build
-pwsh bin/Debug/net8.0/playwright.ps1 install
+pwsh bin/Debug/net8.0/playwright.ps1 install   # Pfad wie oben
 ```
 
 **Gemeinsame Basisklasse** (`TestBase.cs`) – einmal definieren, von allen Testklassen erben:
+
+> ℹ️ **Geolocation global:** Die TodoMatic-App benötigt `navigator.geolocation` für `addTask()`. Die Basisklasse setzt dies einmalig – alle abgeleiteten Testklassen erben die Konfiguration automatisch. Für Exercises, in denen keine Aufgabe hinzugefügt wird, schadet das Grant nicht.
 
 ```csharp
 // MSTest
@@ -172,6 +206,9 @@ public class TestBase : PageTest
     {
         BaseURL = Environment.GetEnvironmentVariable("PLAYWRIGHT_BASE_URL")
                   ?? "http://localhost:3000",
+        // Geolocation global – benötigt von addTask() in allen Tests
+        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
+        Permissions = new[] { "geolocation" },
     };
 }
 ```
@@ -180,13 +217,31 @@ public class TestBase : PageTest
 // NUnit – Attribut und Namespace ändern, Rest identisch
 using Microsoft.Playwright.NUnit;
 [TestFixture]
-public class TestBase : PageTest { /* ContextOptions() wie oben */ }
+public class TestBase : PageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        BaseURL = Environment.GetEnvironmentVariable("PLAYWRIGHT_BASE_URL")
+                  ?? "http://localhost:3000",
+        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
+        Permissions = new[] { "geolocation" },
+    };
+}
 ```
 
 ```csharp
 // xUnit – kein Klassenattribut
 using Microsoft.Playwright.Xunit;
-public class TestBase : PageTest { /* ContextOptions() wie oben */ }
+public class TestBase : PageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        BaseURL = Environment.GetEnvironmentVariable("PLAYWRIGHT_BASE_URL")
+                  ?? "http://localhost:3000",
+        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
+        Permissions = new[] { "geolocation" },
+    };
+}
 ```
 
 **`.runsettings` – Browser, Headless-Modus und Timeouts konfigurieren:**
@@ -438,6 +493,37 @@ public override BrowserTypeLaunchOptions LaunchOptions =>
 
 ---
 
+### 🖥️ Tool 5: Playwright UI Mode
+
+Der UI Mode (seit Playwright 1.32) ist das mächtigste lokale Debug-Werkzeug. Er öffnet eine eigene Oberfläche, in der du Tests verwalten, einzeln starten, in Echtzeit beobachten und direkt debuggen kannst.
+
+**Starten:**
+
+```bash
+npx playwright test --ui
+
+# Im package.json bereits vorkonfiguriert:
+npm run test:ui
+```
+
+**Features auf einen Blick:**
+
+| Feature | Beschreibung |
+|---|---|
+| **Test-Baum** | Alle Tests nach Dateien und Suites – per Klick einzeln starten |
+| **Watch-Mode** | Datei speichern → Test läuft sofort neu (Live-Feedback) |
+| **Timeline** | Visueller Zeitstrahl aller Aktionen, live während der Ausführung |
+| **DOM-Snapshot** | Klick auf jeden Schritt → exakter DOM-Zustand zu dem Zeitpunkt |
+| **Locator Picker** | Klick auf Element im Browser → UI Mode schlägt besten Locator vor |
+| **Netzwerk-Tab** | HTTP-Requests und Responses live sehen |
+| **Console** | Browser-Konsolenausgaben direkt eingebettet |
+
+> **💡 Empfehlung:** Nutze den UI Mode als primäres Werkzeug während der Entwicklung – er vereint Codegen, Inspector und Trace Viewer in einer Oberfläche.
+
+> **C# / .NET:** Der UI Mode ist aktuell nur für TypeScript/JavaScript verfügbar. Für C#-Tests bleibt `PWDEBUG=1` + Inspector der Standard-Workflow.
+
+---
+
 ## Übersicht der App-Struktur (TodoMatic)
 
 | Element | Locator-Hinweis | Wichtiger Hinweis |
@@ -682,6 +768,8 @@ dotnet test --filter "FullyQualifiedName~SmokeTests"
 
 </details>
 
+> 🤔 **Stop & Think:** Warum ist `getByRole("heading", { name: "TodoMatic" })` robuster als `locator("h2")`? Welche App-Änderung würde den ersten Locator überleben, den zweiten aber brechen?
+
 ---
 
 ## Exercise 2: Geolocation mocken und Aufgabe hinzufügen
@@ -703,9 +791,13 @@ Schreibe einen Test, der:
 <details>
 <summary>💡 Lösungshinweis TypeScript</summary>
 
+> ℹ️ **Globale Konfiguration:** Die `playwright.config.ts` dieser HOL enthält bereits `geolocation` und `permissions` global in `use:`. Der `test.use()`-Block hier zeigt, wie man es **pro Datei** überschreibt – z. B. für einen anderen Ort. In späteren Exercises entfällt er.
+
 ```typescript
 import { test, expect } from "@playwright/test";
 
+// Beispiel: Geolocation per-Datei auf einen anderen Ort überschreiben
+// (In dieser HOL nicht nötig – globale Config reicht aus)
 test.use({
   geolocation: { latitude: 48.1372, longitude: 11.5755 },
   permissions: ["geolocation"],
@@ -735,18 +827,13 @@ test("add a new task", async ({ page }) => {
 <details>
 <summary>💡 Lösungshinweis C#</summary>
 
-```csharp
-[TestClass]
-public class AddTaskTests : PageTest
-{
-    public override BrowserNewContextOptions ContextOptions() =>
-        new()
-        {
-            BaseURL = "http://localhost:3000",
-            Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
-            Permissions = new[] { "geolocation" },
-        };
+> ℹ️ **Globale Konfiguration:** Die `TestBase`-Klasse setzt `Geolocation` und `Permissions` bereits. Alle Testklassen, die `TestBase` statt `PageTest` erweitern, erben diese Konfiguration – kein `ContextOptions()`-Override nötig.
 
+```csharp
+// TestBase erbt bereits Geolocation + BaseURL – kein Override nötig
+[TestClass]
+public class AddTaskTests : TestBase
+{
     [TestMethod]
     public async Task AddNewTask()
     {
@@ -772,6 +859,8 @@ public class AddTaskTests : PageTest
 Ohne Grant hängt der Callback und die Aufgabe wird nie gespeichert. Dieses Pattern ist in allen echten Apps relevant, die Location-APIs nutzen – z. B. Store-Finder oder Delivery-Tracking.
 
 </details>
+
+> 🤔 **Stop & Think:** Was würde ohne Geolocation-Mock passieren? Würde der Test sofort fehlschlagen oder nach einem Timeout – und welches Timeout würde greifen?
 
 ---
 
@@ -800,10 +889,7 @@ Ohne Grant hängt der Callback und die Aufgabe wird nie gespeichert. Dieses Patt
 ```typescript
 import { test, expect } from "@playwright/test";
 
-test.use({
-  geolocation: { latitude: 48.1372, longitude: 11.5755 },
-  permissions: ["geolocation"],
-});
+// Kein test.use() nötig – Geolocation ist global in playwright.config.ts konfiguriert
 
 async function addTask(page: import("@playwright/test").Page, name: string) {
   await page.locator("#new-todo-input").fill(name);
@@ -849,17 +935,10 @@ test("delete a task", async ({ page }) => {
 <summary>💡 Lösungshinweis C#</summary>
 
 ```csharp
+// TestBase erbt Geolocation + BaseURL – kein ContextOptions()-Override nötig
 [TestClass]
-public class TaskManagementTests : PageTest
+public class TaskManagementTests : TestBase
 {
-    public override BrowserNewContextOptions ContextOptions() =>
-        new()
-        {
-            BaseURL = "http://localhost:3000",
-            Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
-            Permissions = new[] { "geolocation" },
-        };
-
     private async Task AddTaskAsync(string name)
     {
         await Page.Locator("#new-todo-input").FillAsync(name);
@@ -908,6 +987,8 @@ Schränkt einen breiten Locator auf Elemente ein, die bestimmten Text enthalten.
 
 </details>
 
+> 🤔 **Stop & Think:** Warum ist `.filter({ hasText })` / `.Filter(new() { HasText })` besser als einfach `getByText("Edit").click()`? Was passiert, wenn zwei Aufgaben gleichzeitig in der Liste sind?
+
 ---
 
 ## Exercise 4: Filter-Funktionalität testen
@@ -931,10 +1012,7 @@ Schränkt einen breiten Locator auf Elemente ein, die bestimmten Text enthalten.
 ```typescript
 import { test, expect } from "@playwright/test";
 
-test.use({
-  geolocation: { latitude: 48.1372, longitude: 11.5755 },
-  permissions: ["geolocation"],
-});
+// Kein test.use() nötig – Geolocation ist global in playwright.config.ts konfiguriert
 
 async function addTask(page: import("@playwright/test").Page, name: string) {
   await page.locator("#new-todo-input").fill(name);
@@ -985,17 +1063,10 @@ test("filter buttons work correctly", async ({ page }) => {
 <summary>💡 Lösungshinweis C#</summary>
 
 ```csharp
+// TestBase erbt Geolocation + BaseURL – kein ContextOptions()-Override nötig
 [TestClass]
-public class FilterTests : PageTest
+public class FilterTests : TestBase
 {
-    public override BrowserNewContextOptions ContextOptions() =>
-        new()
-        {
-            BaseURL = "http://localhost:3000",
-            Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
-            Permissions = new[] { "geolocation" },
-        };
-
     private async Task AddTaskAsync(string name)
     {
         await Page.Locator("#new-todo-input").FillAsync(name);
@@ -1041,6 +1112,8 @@ public class FilterTests : PageTest
 ```
 
 </details>
+
+> 🤔 **Stop & Think:** Der Filter zeigt immer die aktuelle Liste – aber wie könnte dieser Test fehlschlagen, wenn ein anderer parallel laufender Test ebenfalls Aufgaben hinzufügt? Wie verhindert Playwright das bei `fullyParallel: true`?
 
 ---
 
@@ -1205,6 +1278,8 @@ public class NetworkMockTests : PageTest
 
 </details>
 
+> 🤔 **Stop & Think:** Warum ist Test B (HTTP 500 simulieren) in einem echten Projekt besonders wichtig? Was passiert in der App, wenn der echte Server einen 500er zurückgibt – und wie könntest du das mit `page.on("console", ...)` überprüfen?
+
 ---
 
 ## Exercise 6: Response-Manipulation – Logo durch Testbild ersetzen
@@ -1322,6 +1397,8 @@ public class ImageMockTests : PageTest
 Dieses `FetchAsync()`-Pattern ist die Kernidee des "Santa Hat"-Demos aus dem [IT-Tage 2025](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_IT_Tage_2025.cs): Speaker-Fotos werden durch Weihnachtsmützen-Bilder ersetzt, ohne den echten HTTP-Aufruf zu verhindern.
 
 </details>
+
+> 🤔 **Stop & Think:** Was ist der Unterschied zwischen `route.fulfill()` und `route.fetch()` + `route.fulfill(response, { body: ... })`? In welchem Szenario brauchst du zwingend die zweite Variante?
 
 ---
 
@@ -1508,8 +1585,7 @@ import { test, expect } from "@playwright/test";
 test.use({
   video: "on",                   // immer aufzeichnen
   // video: "retain-on-failure", // nur bei Fehler behalten (CI-Empfehlung)
-  geolocation: { latitude: 48.1372, longitude: 11.5755 },
-  permissions: ["geolocation"],
+  // Geolocation aus globalem playwright.config.ts – kein Eintrag hier nötig
 });
 
 test("record task workflow", async ({ page }) => {
@@ -1591,10 +1667,7 @@ public void SaveVideoPath()
 ```typescript
 import { test, expect } from "@playwright/test";
 
-test.use({
-  geolocation: { latitude: 48.1372, longitude: 11.5755 },
-  permissions: ["geolocation"],
-});
+// Kein test.use() nötig – Geolocation ist global in playwright.config.ts konfiguriert
 
 test("manual trace – add and delete task", async ({ page, context }) => {
   // Trace starten (screenshots + DOM-Snapshots + Quellcode)
@@ -1632,16 +1705,10 @@ use: { trace: "on-first-retry" }  // nur beim Retry – CI-Empfehlung
 <summary>💡 Lösungshinweis C# – MSTest</summary>
 
 ```csharp
+// TestBase erbt Geolocation + BaseURL – kein ContextOptions()-Override nötig
 [TestClass]
-public class TraceTests : PageTest
+public class TraceTests : TestBase
 {
-    public override BrowserNewContextOptions ContextOptions() => new()
-    {
-        BaseURL = "http://localhost:3000",
-        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
-        Permissions = new[] { "geolocation" },
-    };
-
     [TestMethod]
     public async Task ManualTrace()
     {
@@ -1713,6 +1780,101 @@ public class TraceTests : PageTest
 
 </details>
 
+> 🤔 **Stop & Think:** Wann würdest du `trace: "on"` statt `trace: "on-first-retry"` in der Produktion wählen – und welchen Trade-off gehst du dabei ein (Speicherplatz, Performance)?
+
+---
+
+### Teil D: Visual Regression – `toHaveScreenshot()` (Bonus)
+
+**Ziel:** Pixel-genaue Screenshot-Vergleiche automatisieren. Playwright speichert beim ersten Lauf Referenz-Screenshots ("Snapshots") und vergleicht bei jedem weiteren Lauf das aktuelle UI dagegen.
+
+**Aufgabe:**
+1. Schreibe einen Test, der einen Screenshot der Startseite mit `toHaveScreenshot()` vergleicht
+2. Führe den Test zum ersten Mal aus – Playwright erstellt die Referenz-Datei automatisch
+3. Ändere etwas am UI (z. B. Hintergrundfarbe in `src/styles.css`) und führe den Test erneut aus
+4. Beobachte, wie Playwright einen Diff anzeigt und der Test fehlschlägt
+5. Aktualisiere die Snapshots mit `--update-snapshots`
+
+> 📚 **Docs:** [Visual Comparisons (TS)](https://playwright.dev/docs/test-snapshots) · [Visual Comparisons (.NET)](https://playwright.dev/dotnet/docs/test-snapshots)
+
+<details>
+<summary>💡 Lösungshinweis TypeScript</summary>
+
+```typescript
+import { test, expect } from "@playwright/test";
+
+test("initial page matches screenshot", async ({ page }) => {
+  await page.goto("/");
+
+  // Beim ersten Lauf: Playwright erstellt tests/snapshots/initial-state.png
+  // Bei jedem Folgelauf: Pixel-Vergleich gegen dieses Referenz-Bild
+  await expect(page).toHaveScreenshot("initial-state.png", {
+    fullPage: true,
+    // Toleranz für Anti-Aliasing und Font-Rendering-Unterschiede
+    maxDiffPixelRatio: 0.02,
+  });
+});
+
+test("task list after adding item", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#new-todo-input").fill("Visual Regression Task");
+  await page.locator("#myUniqueID").click();
+  await expect(page.getByRole("list").getByText("Visual Regression Task")).toBeVisible();
+
+  // Nur die Aufgabenliste vergleichen (nicht die ganze Seite)
+  await expect(page.getByRole("list")).toHaveScreenshot("task-list.png");
+});
+```
+
+```bash
+# Ersten Lauf: Snapshots erstellen
+npx playwright test visual.spec.ts
+
+# Snapshots nach einer bewussten UI-Änderung aktualisieren
+npx playwright test visual.spec.ts --update-snapshots
+
+# Im HTML-Report: Diff-Bild zeigt rote Pixel für Abweichungen
+npx playwright show-report
+```
+
+> **Wo werden Snapshots gespeichert?** In `tests/__snapshots__/<test-name>/<snapshot-name>.png`. Diese Dateien **committen** – sie sind deine Baseline und müssen im Repository versioniert sein.
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C#</summary>
+
+```csharp
+// TestBase erbt Geolocation + BaseURL
+[TestClass]
+public class VisualRegressionTests : TestBase
+{
+    [TestMethod]
+    public async Task InitialPageMatchesSnapshot()
+    {
+        await Page.GotoAsync("/");
+
+        // Screenshot aufnehmen und als Basis speichern
+        await Page.ScreenshotAsync(new PageScreenshotOptions
+        {
+            Path = "snapshots/initial-state.png",
+            FullPage = true,
+        });
+
+        // Hinweis: Playwright .NET hat kein eingebautes toHaveScreenshot() –
+        // für Pixel-Vergleich empfiehlt sich eine Bibliothek wie ImageSharp
+        // oder der Vergleich im Playwright HTML-Report über die Screenshots.
+        // Alternativ: externe Visual-Testing-Services (z. B. Percy, Applitools).
+    }
+}
+```
+
+> ℹ️ **C#-Hinweis:** `toHaveScreenshot()` ist aktuell nur in der TypeScript-API verfügbar. Für C#-Projekte gibt es keine eingebaute Pixel-Vergleichs-API – nutze externe Bibliotheken oder TypeScript für Visual Regression Tests.
+
+</details>
+
+> 🤔 **Stop & Think:** Wo ist Visual Regression Testing sinnvoll und wo kann es zur "Flakiness-Falle" werden? Wie gehst du mit Snapshot-Abweichungen durch Rendering-Unterschiede zwischen Betriebssystemen um?
+
 ---
 
 ## Exercise 8: Mobile Device Emulation
@@ -1732,10 +1894,9 @@ public class TraceTests : PageTest
 ```typescript
 import { test, expect, devices } from "@playwright/test";
 
+// Nur das Geräteprofil setzen – Geolocation kommt aus playwright.config.ts global
 test.use({
   ...devices["iPhone 15 Pro"],
-  geolocation: { latitude: 48.1372, longitude: 11.5755 },
-  permissions: ["geolocation"],
 });
 
 test("app works on mobile", async ({ page }) => {
@@ -1764,18 +1925,20 @@ console.log(Object.keys(devices));
 <summary>💡 Lösungshinweis C#</summary>
 
 ```csharp
+// TestBase setzt BaseURL + Geolocation; wir überschreiben nur für das Geräteprofil
 [TestClass]
-public class MobileTests : PageTest
+public class MobileTests : TestBase
 {
     public override BrowserNewContextOptions ContextOptions()
     {
-        // iPhone 15 Pro Geräteprofil
+        // iPhone 15 Pro Geräteprofil – BaseURL und Geolocation aus TestBase
+        var baseOpts = base.ContextOptions();
         var iPhone = Playwright.Devices["iPhone 15 Pro"];
         return new BrowserNewContextOptions(iPhone)
         {
-            BaseURL = "http://localhost:3000",
-            Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
-            Permissions = new[] { "geolocation" },
+            BaseURL = baseOpts.BaseURL,
+            Geolocation = baseOpts.Geolocation,
+            Permissions = baseOpts.Permissions,
         };
     }
 
@@ -1811,6 +1974,8 @@ foreach (var device in Playwright.Devices.Keys)
 **Aus PlaywrightDemos:** Mobile-Emulation + Video-Aufnahme ist seit [WDC 2023](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_WDC2023.cs) ein fester Bestandteil der Demos.
 
 </details>
+
+> 🤔 **Stop & Think:** Welche App-Verhaltensweisen würden auf einem echten Gerät anders sein als in der Emulation? Nenne drei konkrete Punkte, die die Emulation nicht abdecken kann.
 
 ---
 
@@ -1875,16 +2040,20 @@ public class CrossBrowserTests
     {
         using var playwright = await Playwright.CreateAsync();
 
-        var options = new BrowserTypeLaunchOptions { Headless = true };
+        // Neue Instanz je Browser – BrowserTypeLaunchOptions ist eine Klasse,
+        // kein Record, und unterstützt daher keinen with-Ausdruck.
         IBrowser browser = browserName switch
         {
-            "Chromium" => await playwright.Chromium.LaunchAsync(options),
-            "Firefox"  => await playwright.Firefox.LaunchAsync(options),
-            "Webkit"   => await playwright.Webkit.LaunchAsync(options),
+            "Chromium" => await playwright.Chromium.LaunchAsync(
+                              new() { Headless = true }),
+            "Firefox"  => await playwright.Firefox.LaunchAsync(
+                              new() { Headless = true }),
+            "Webkit"   => await playwright.Webkit.LaunchAsync(
+                              new() { Headless = true }),
             "Edge"     => await playwright.Chromium.LaunchAsync(
-                              options with { Channel = "msedge" }),
+                              new() { Headless = true, Channel = "msedge" }),
             "Chrome"   => await playwright.Chromium.LaunchAsync(
-                              options with { Channel = "chrome" }),
+                              new() { Headless = true, Channel = "chrome" }),
             _          => throw new ArgumentException($"Unknown browser: {browserName}")
         };
 
@@ -1909,6 +2078,8 @@ dotnet test --filter "TestCategory=firefox"
 
 </details>
 
+> 🤔 **Stop & Think:** Warum laufen die drei Browser in dieser Übung sequenziell (`[DataRow]`) statt parallel? Wie würdest du sie in GitHub Actions parallel in einer Matrix ausführen?
+
 ---
 
 ## Exercise 10: JavaScript in die Seite injizieren mit `page.evaluate()`
@@ -1929,10 +2100,9 @@ dotnet test --filter "TestCategory=firefox"
 ```typescript
 import { test, expect } from "@playwright/test";
 
+// Geolocation aus globalem playwright.config.ts; headless: false nur für lokales Debugging
 test.use({
-  geolocation: { latitude: 48.1372, longitude: 11.5755 },
-  permissions: ["geolocation"],
-  headless: false, // für DevTools-Debugging
+  headless: false, // für DevTools-Debugging – entfernen für CI
 });
 
 test("read task names via evaluate", async ({ page }) => {
@@ -2094,6 +2264,8 @@ Der [BASTA! Spring 2026 Demo](https://github.com/norschel/PlaywrightDemos/blob/m
 
 </details>
 
+> 🤔 **Stop & Think:** Wann ist `page.evaluate()` die bessere Wahl gegenüber einem normalen Locator – und wann ist es ein Anti-Pattern, das du vermeiden solltest?
+
 ---
 
 ## Exercise 11: Page Object Model – Wartbarkeit und Wiederverwendung
@@ -2190,10 +2362,7 @@ export class TodoPage {
 import { test, expect } from "@playwright/test";
 import { TodoPage } from "./pages/TodoPage";
 
-test.use({
-  geolocation: { latitude: 48.1372, longitude: 11.5755 },
-  permissions: ["geolocation"],
-});
+// Kein test.use() nötig – Geolocation ist global in playwright.config.ts konfiguriert
 
 test("full task lifecycle – lesbarer dank POM", async ({ page }) => {
   const todo = new TodoPage(page);
@@ -2292,16 +2461,10 @@ public class TodoPage
 Tests (MSTest – NUnit/xUnit analog):
 
 ```csharp
+// TestBase erbt Geolocation + BaseURL – kein ContextOptions()-Override nötig
 [TestClass]
-public class PomTests : PageTest
+public class PomTests : TestBase
 {
-    public override BrowserNewContextOptions ContextOptions() => new()
-    {
-        BaseURL = "http://localhost:3000",
-        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
-        Permissions = new[] { "geolocation" },
-    };
-
     [TestMethod]   // NUnit: [Test]   xUnit: [Fact]
     public async Task FullTaskLifecycle()
     {
@@ -2320,11 +2483,13 @@ public class PomTests : PageTest
 }
 ```
 
-**NUnit:** `[TestFixture]` + `[Test]` + `Microsoft.Playwright.NUnit.PageTest`  
-**xUnit:** kein Klassenattribut + `[Fact]` + `Microsoft.Playwright.Xunit.PageTest`  
+**NUnit:** `[TestFixture]` + `[Test]` + `Microsoft.Playwright.NUnit.PageTest` als Basis für `TestBase`  
+**xUnit:** kein Klassenattribut + `[Fact]` + `Microsoft.Playwright.Xunit.PageTest` als Basis für `TestBase`  
 **Das `TodoPage`-Objekt selbst bleibt identisch** – es ist framework-unabhängig.
 
 </details>
+
+> 🤔 **Stop & Think:** Wenn du `#myUniqueID` im `TodoPage`-Konstruktor zu `#add-task-btn` änderst, wie viele Test-Dateien müsstest du anfassen? Was wäre der Unterschied, wenn du kein POM hättest?
 
 ---
 
@@ -2450,7 +2615,8 @@ jobs:
       # 5. .NET-Testprojekt bauen
       - run: dotnet build TodoPlaywrightTests/
 
-      # 6. Playwright-Browser via PowerShell-Skript installieren (von dotnet build generiert)
+      # 6. Playwright-Browser installieren – Pfad hängt vom Build-Output-Ordner ab.
+      #    Alternativ: dotnet tool install -g Microsoft.Playwright.CLI && playwright install --with-deps
       - run: pwsh TodoPlaywrightTests/bin/Debug/net8.0/playwright.ps1 install --with-deps
 
       # 7. Tests ausführen – TRX-Format für PublishTestResults kompatibel
@@ -2792,6 +2958,8 @@ docker compose -f docker-compose.test.yml down
 
 </details>
 
+> 🤔 **Stop & Think:** Warum ist `if: always()` für den Report-Upload wichtiger als `if: failure()`? Welche Information geht verloren, wenn der Report nur bei Fehlern hochgeladen wird?
+
 ---
 
 ## Exercise 13 (Bonus): Azure Playwright Testing Service
@@ -3076,6 +3244,8 @@ dotnet test TodoPlaywrightTests/ --filter "TestCategory=CICD" \
 
 </details>
 
+> 🤔 **Stop & Think:** In welchem konkreten Szenario lohnt sich der Azure Playwright Testing Service gegenüber Self-hosted CI – und in welchem nicht? Denke an Projektgröße, Budget und Datenschutzanforderungen.
+
 ---
 
 ## Exercise 14 (Bonus): Playwright MCP Server – KI-gesteuerte Browser-Automatisierung
@@ -3314,6 +3484,8 @@ Screenshot der TodoMatic-App. Ist die App mobil nutzbar?
 | VS Code MCP-Konfiguration | [code.visualstudio.com/docs/copilot/chat/mcp-servers](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) |
 | GitHub Copilot Agent Mode | [docs.github.com/copilot/agent-mode](https://docs.github.com/en/copilot/using-github-copilot/agents/using-github-copilot-agent-mode) |
 
+> 🤔 **Stop & Think:** Wo ersetzt der MCP Server menschliche Exploration sinnvoll – und wo solltest du trotzdem von Hand testen? Welche Locatoren oder Szenarien würde ein KI-Agent wahrscheinlich übersehen?
+
 ---
 
 ## Zusammenfassung: Gelerntes auf einen Blick
@@ -3343,6 +3515,155 @@ Screenshot der TodoMatic-App. Ist die App mobil nutzbar?
 | **Docker** | Dockerfile | Multi-Stage Dockerfile | alle | **12** |
 | **Azure PW Service** | `playwright.service.config.ts` | `PlaywrightServiceTest` (NUnit) | TS / NUnit | **13** |
 | **Playwright MCP Server** | `@playwright/mcp` + MCP-Config | *(Node.js-basiert, kein C# SDK)* | VS Code + Copilot | **14** |
+
+---
+
+## Trouble-shooting – Häufige Fehler und Lösungen
+
+Hier sind die häufigsten Stolpersteine beim Arbeiten mit dieser HOL:
+
+---
+
+### 🔴 "Add"-Button klicken, aber Aufgabe erscheint nicht
+
+**Symptom:** `toBeVisible()` schlägt mit Timeout fehl – die Aufgabe erscheint nie in der Liste.
+
+**Ursache:** Die App ruft `navigator.geolocation.getCurrentPosition()` auf und wartet auf ein Ergebnis. Ohne Geolocation-Grant hängt der Callback und die Aufgabe wird nie gespeichert.
+
+**Lösung TypeScript:**
+```typescript
+// In playwright.config.ts (global – einmalig für alle Tests):
+use: {
+  geolocation: { latitude: 48.1372, longitude: 11.5755 },
+  permissions: ["geolocation"],
+}
+```
+
+**Lösung C#:**
+```csharp
+// In TestBase.ContextOptions():
+Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
+Permissions = new[] { "geolocation" },
+```
+
+---
+
+### 🔴 Port 3000 bereits belegt
+
+**Symptom:** `Error: listen EADDRINUSE: address already in use :::3000` oder `webServer` startet nicht.
+
+**Lösung:**
+```bash
+# Prozess auf Port 3000 finden und beenden (Linux/macOS):
+lsof -ti:3000 | xargs kill -9
+
+# Windows:
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+
+# Alternativ: App auf anderem Port starten
+npm run dev -- --port 3001
+# und in playwright.config.ts / PLAYWRIGHT_BASE_URL anpassen
+```
+
+---
+
+### 🔴 `playwright.ps1` nicht gefunden
+
+**Symptom:** `pwsh: cannot find 'bin/Debug/net8.0/playwright.ps1'`
+
+**Ursachen und Lösungen:**
+- `dotnet build` wurde noch nicht ausgeführt → `dotnet build` ausführen
+- Falsches Target-Framework (z. B. net9.0 statt net8.0) → Pfad in der Konsole anpassen oder:
+```bash
+# Pfad automatisch finden (Linux/macOS):
+pwsh $(find . -name 'playwright.ps1' -not -path '*/obj/*' | head -1) install
+
+# Alternativ: Global Tool verwenden
+dotnet tool install --global Microsoft.Playwright.CLI
+playwright install
+```
+
+---
+
+### 🟡 `npx playwright install --with-deps` schlägt in CI fehl
+
+**Symptom:** `Error: Failed to install browsers` oder fehlende Linux-Bibliotheken.
+
+**Lösung:** `--with-deps` ist für Linux-Umgebungen ohne vorinstallierte System-Bibliotheken gedacht. Stelle sicher, dass:
+```yaml
+# GitHub Actions / Azure Pipelines:
+- run: npx playwright install --with-deps   # ✅ immer --with-deps in CI
+# Nicht nur:
+- run: npx playwright install               # ❌ fehlt System-Abhängigkeiten
+```
+
+Alternativ: Offizielles Docker-Image nutzen (`mcr.microsoft.com/playwright:v1.52.0-jammy`) – enthält alles vorinstalliert.
+
+---
+
+### 🟡 Test schlägt nach Page-Reload fehl – Aufgaben weg
+
+**Symptom:** Test fügt Aufgaben hinzu, ruft `page.goto("/")` erneut auf und die Liste ist leer.
+
+**Ursache:** Die App speichert Aufgaben nur im React-State – kein LocalStorage, keine Datenbank. Ein Reload setzt alles zurück.
+
+**Lösung:** Alle Testschritte ohne erneutes `goto()` ausführen, oder Aufgaben nach jedem `goto()` neu hinzufügen.
+
+---
+
+### 🟡 `getByTestId("testID-All")` findet das Element nicht
+
+**Symptom:** `strict mode violation: locator resolved to N elements` oder Element nicht gefunden.
+
+**Mögliche Ursachen:**
+1. App noch nicht vollständig geladen → `await page.waitForLoadState("networkidle")` einfügen
+2. Filter-Buttons verwenden `data-testid`, nicht `id` – prüfe mit DevTools: `$$('[data-testid]')`
+3. Tipp-Fehler: Groß/Kleinschreibung beachten (`testID-All` ≠ `testID-all`)
+
+---
+
+### 🟡 Locator matched mehrere Elemente
+
+**Symptom:** `Error: strict mode violation – locator matched 2 elements`
+
+**Lösung:** Locator mit `.filter()` eingrenzen:
+```typescript
+// ❌ zu breit – trifft alle Buttons mit Name "Delete"
+page.getByRole("button", { name: "Delete" })
+
+// ✅ zuerst das richtige Listenelement finden, dann den Button darin
+page.getByRole("listitem").filter({ hasText: "Meine Aufgabe" })
+    .getByRole("button", { name: "Delete" })
+```
+
+---
+
+### 🟡 C#-Tests laufen, aber die App antwortet nicht
+
+**Symptom:** `net::ERR_CONNECTION_REFUSED` oder Timeout beim `GotoAsync()`
+
+**Ursache:** Im Gegensatz zu TypeScript (dort gibt es `webServer` in `playwright.config.ts`) startet C#-Tests die App nicht automatisch.
+
+**Lösung:** App manuell starten, bevor du Tests ausführst:
+```bash
+# Terminal 1: App starten
+npm run dev
+
+# Terminal 2: Tests ausführen
+dotnet test --settings playwright.runsettings
+```
+
+---
+
+### 🟢 HTML-Report öffnet sich nicht im Browser
+
+**Lösung:**
+```bash
+npx playwright show-report              # TypeScript
+# Öffnet http://localhost:9323 – falls Port belegt:
+npx playwright show-report --port 9324
+```
 
 ---
 
