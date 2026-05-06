@@ -11,15 +11,18 @@
 
 Nach dieser HOL kannst du:
 
-- Playwright-Tests in TypeScript/JavaScript **und** C# (.NET) aufsetzen
+- Playwright-Tests in TypeScript/JavaScript **und** C# (.NET) aufsetzen – mit **MSTest, NUnit oder xUnit**
+- Tests **code-driven** (bevorzugt) und per **Codegen** erstellen – und beide Ansätze gezielt einsetzen
 - Lokatorstrategien (ARIA-Roles, `data-testid`, CSS, Text) gezielt einsetzen
 - Browser-APIs wie Geolocation mocken
 - Netzwerk-Requests abfangen und manipulieren
-- Screenshots, Videos und Traces aufzeichnen
+- **Page Object Model** für wartbare, wiederverwendbare Tests aufbauen
+- **Screenshots, Videos und Traces** als Diagnosewerkzeuge nutzen
 - Tests cross-browser und mit Mobile-Emulation ausführen
 - JavaScript direkt ins DOM injizieren via `page.evaluate()`
-- **Codegen, Trace Viewer und Browser DevTools** als Debugging-Werkzeuge einsetzen
-- Playwright in einer GitHub Actions CI/CD-Pipeline betreiben
+- **Codegen, Trace Viewer, Inspector und Browser DevTools** als Debugging-Werkzeuge einsetzen
+- Tests in **GitHub Actions**, **Azure Pipelines** und **Docker** betreiben
+- Den **Azure Playwright Testing Service** für Cloud-Ausführung nutzen
 
 ---
 
@@ -113,54 +116,187 @@ npx playwright test --list  # Setup prüfen
 
 ---
 
-### Setup: C# / .NET (Visual Studio oder VS Code)
+### Setup: C# / .NET – Testframework wählen
+
+Du kannst zwischen **MSTest**, **NUnit** und **xUnit** wählen. Alle drei werden von `Microsoft.Playwright` offiziell unterstützt.
+
+| | MSTest | NUnit | xUnit |
+|---|---|---|---|
+| NuGet-Paket | `Microsoft.Playwright.MSTest` | `Microsoft.Playwright.NUnit` | `Microsoft.Playwright.Xunit` |
+| Template | `dotnet new mstest` | `dotnet new nunit` | `dotnet new xunit` |
+| Testklasse | `[TestClass]` | `[TestFixture]` | *(kein Attribut)* |
+| Testmethode | `[TestMethod]` | `[Test]` | `[Fact]` |
+| Parametrisiert | `[DataRow("val")]` | `[TestCase("val")]` | `[Theory]`+`[InlineData("val")]` |
+| Setup | `[TestInitialize]` | `[SetUp]` | Konstruktor / `IAsyncLifetime` |
+| CI-Tag | `[TestCategory("CICD")]` | `[Category("CICD")]` | `[Trait("Category","CICD")]` |
+
+**Empfehlung:** Wähle das Framework, das in deinem Team bereits genutzt wird. Alle Exercises zeigen MSTest als primäre Lösung; NUnit und xUnit als ausklappbare Alternativen.
+
+**MSTest einrichten:**
 
 ```bash
-# In einem separaten Verzeichnis neben dem App-Repo
-dotnet new mstest -n TodoPlaywrightTests
-cd TodoPlaywrightTests
+dotnet new mstest -n TodoPlaywrightTests && cd TodoPlaywrightTests
 dotnet add package Microsoft.Playwright.MSTest
-
-# Projekt bauen
 dotnet build
-
-# Playwright-Browser installieren (PowerShell-Skript wird beim Build generiert)
 pwsh bin/Debug/net8.0/playwright.ps1 install
 ```
 
-Erstelle `playwright.config.json` (optional, für baseURL):
+**NUnit einrichten:**
 
-```json
-{
-  "use": {
-    "baseURL": "http://localhost:3000"
-  }
-}
+```bash
+dotnet new nunit -n TodoPlaywrightTests && cd TodoPlaywrightTests
+dotnet add package Microsoft.Playwright.NUnit
+dotnet build
+pwsh bin/Debug/net8.0/playwright.ps1 install
 ```
 
-Basisklasse für alle Tests (`TestBase.cs`):
+**xUnit einrichten:**
+
+```bash
+dotnet new xunit -n TodoPlaywrightTests && cd TodoPlaywrightTests
+dotnet add package Microsoft.Playwright.Xunit
+dotnet build
+pwsh bin/Debug/net8.0/playwright.ps1 install
+```
+
+**Gemeinsame Basisklasse** (`TestBase.cs`) – einmal definieren, von allen Testklassen erben:
 
 ```csharp
+// MSTest
 using Microsoft.Playwright.MSTest;
-
 [TestClass]
 public class TestBase : PageTest
 {
-    // PageTest stellt this.Page, this.Browser, this.Context bereit
-    // baseURL aus Umgebungsvariable oder Default
-    public override BrowserNewContextOptions ContextOptions()
+    public override BrowserNewContextOptions ContextOptions() => new()
     {
-        return new BrowserNewContextOptions
-        {
-            BaseURL = Environment.GetEnvironmentVariable("PLAYWRIGHT_BASE_URL")
-                      ?? "http://localhost:3000",
-        };
-    }
+        BaseURL = Environment.GetEnvironmentVariable("PLAYWRIGHT_BASE_URL")
+                  ?? "http://localhost:3000",
+    };
 }
 ```
 
-> **Hinweis:** Starte die TodoMatic-App (`npm run dev`) bevor du C#-Tests ausführst.  
-> In der CI-Pipeline übernimmt ein `webServer`-Equivalent die App-Start-Logik.
+```csharp
+// NUnit – Attribut und Namespace ändern, Rest identisch
+using Microsoft.Playwright.NUnit;
+[TestFixture]
+public class TestBase : PageTest { /* ContextOptions() wie oben */ }
+```
+
+```csharp
+// xUnit – kein Klassenattribut
+using Microsoft.Playwright.Xunit;
+public class TestBase : PageTest { /* ContextOptions() wie oben */ }
+```
+
+**`.runsettings` – Browser, Headless-Modus und Timeouts konfigurieren:**
+
+Erstelle `playwright.runsettings` im Projektstamm:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <TestRunParameters>
+    <!-- Browser: chromium | firefox | webkit -->
+    <Parameter name="playwright:browser" value="chromium" />
+    <Parameter name="playwright:headless" value="true" />
+    <!-- Timeout je Aktion in ms -->
+    <Parameter name="playwright:timeout" value="30000" />
+    <!-- Basis-URL der App -->
+    <Parameter name="playwright:baseUrl" value="http://localhost:3000" />
+    <!-- SlowMo für Debugging (ms zwischen Aktionen) -->
+    <!-- <Parameter name="playwright:slowMo" value="500" /> -->
+  </TestRunParameters>
+  <MSTest>
+    <Parallelize>
+      <Workers>4</Workers>
+      <Scope>ClassLevel</Scope>
+    </Parallelize>
+  </MSTest>
+</RunSettings>
+```
+
+```bash
+dotnet test --settings playwright.runsettings
+```
+
+**Wichtige Umgebungsvariablen:**
+
+```bash
+BROWSER=firefox dotnet test           # Browser wechseln
+HEADED=1 dotnet test                  # Sichtbarer Modus
+PLAYWRIGHT_TRACE=on dotnet test       # Trace immer aufzeichnen
+PLAYWRIGHT_BASE_URL=http://localhost:3000 dotnet test
+```
+
+> **⚠️ Wichtig:** Starte die TodoMatic-App (`npm run dev`) **manuell**, bevor du C#-Tests ausführst. Im Gegensatz zu TypeScript gibt es für .NET kein eingebautes `webServer`-Äquivalent – die App muss separat gestartet werden.
+
+---
+
+## Teil 0C: App-Konfiguration – Was du über die TodoMatic-App wissen musst
+
+> ⚠️ **Lies diesen Abschnitt vor den Übungen.** Er erklärt App-Verhaltensweisen, die direkt bestimmen, wie du Tests schreiben musst.
+
+### Starten der App
+
+```bash
+npm run dev          # Startet Vite Dev-Server auf Port 3000, öffnet Browser
+npm run dev -- --open false   # Ohne Browser-Öffnung (besser für Test-Runs)
+```
+
+Port und Base-URL sind in `vite.config.js` als `base: "http://localhost:3000/"` und in `package.json` als `"dev": "vite --port 3000 --open"` fest konfiguriert.
+
+### Initialer App-Zustand: 1 vorhandene Aufgabe
+
+Die App startet **nicht leer**. In `src/main.tsx` ist eine Aufgabe fest einprogrammiert:
+
+```typescript
+const DATA: Task[] = [{
+  id: "todo-iYhueLHTq-6wprHhsXYF6",
+  name: "test",
+  time: "2024-11-18T16:12:44.160Z",
+  location: { latitude: 49.6370557, longitude: 6.9014314 },
+  completed: false,
+}];
+ReactDOM.createRoot(rootElement).render(<App tasks={DATA} />);
+```
+
+**Konsequenzen für Tests:**
+
+| Situation | Was passiert |
+|---|---|
+| Seite frisch laden | `"1 task remaining"` ist sichtbar |
+| Aufgabe hinzufügen | Zähler geht von 1 → 2 |
+| Test benötigt leeren Zustand | Initiale Aufgabe `"test"` zuerst löschen |
+| Seite neu laden (F5 / `page.reload()`) | Zustand resettet auf 1 initiale Aufgabe |
+
+### Statische Dateien
+
+```
+public/getsitelogo.png   → http://localhost:3000/getsitelogo.png   (Logo im Header)
+public/remoteTasks.json  → http://localhost:3000/remoteTasks.json  (Remote-Tasks-Button)
+```
+
+**"Load remote tasks"** ersetzt die **gesamte** aktuelle Task-Liste durch die 2 Einträge aus `remoteTasks.json`.
+
+### Geolocation ist Pflicht beim Hinzufügen von Aufgaben
+
+```typescript
+// src/App.tsx – addTask ruft navigator.geolocation auf
+function addTask(name: string) {
+  navigator.geolocation.getCurrentPosition((position) => {
+    // Aufgabe wird NUR hier erstellt – ohne erfolgreichen Callback: nichts passiert
+    setTasks([...tasks, { id: "todo-" + nanoid(), name, ...coords }]);
+  });
+}
+```
+
+**Ohne Geolocation-Grant** wird keine Aufgabe gespeichert – kein Fehler, keine Meldung. Das ist der häufigste Fehler beim ersten Test! Lösung: immer `permissions: ["geolocation"]` + `geolocation: { latitude, longitude }` konfigurieren (siehe Exercise 2).
+
+### Keine Persistenz
+
+- Kein LocalStorage, keine Datenbank, kein Backend
+- `page.reload()` = kompletter State-Reset
+- Tests sind voneinander isoliert – ideal für parallele Ausführung
 
 ---
 
@@ -303,21 +439,94 @@ public override BrowserTypeLaunchOptions LaunchOptions =>
 
 ## Übersicht der App-Struktur (TodoMatic)
 
-| Element | Locator-Hinweis | Besonderheit |
+| Element | Locator-Hinweis | Wichtiger Hinweis |
 |---|---|---|
 | Seitentitel | `<h2>` mit Text "TodoMatic" | |
 | Eingabefeld neue Aufgabe | `id="new-todo-input"` | |
-| Hinzufügen-Button | `id="myUniqueID"` (Text: "Add") | |
-| Filter-Buttons | `data-testid="testID-All/Active/Completed"` | `aria-pressed` zeigt aktiven Filter |
-| Aufgaben-Liste | `role="list"` mit `aria-labelledby="list-heading"` | |
-| Aufgaben-Anzahl | `id="list-heading"` | Text: "N tasks remaining" |
+| Hinzufügen-Button | `id="myUniqueID"` (Text: "Add") | ⚠️ Braucht Geolocation-Grant! |
+| Filter-Buttons | `data-testid="testID-All/Active/Completed"` | `aria-pressed="true"` = aktiver Filter |
+| Aufgaben-Liste | `role="list"` | Startet mit 1 Aufgabe ("test") |
+| Aufgaben-Zähler | `id="list-heading"` | "N tasks remaining" – beginnt bei 1 |
 | Logo-Bild | `alt="Site Logo"` | HTTP-Anfrage: `getsitelogo.png` |
-| Remote-Tasks-Button | Text "Load remote tasks" | Lädt `remoteTasks.json` per fetch |
-| Bearbeiten-Button | Text "Edit" | |
+| Remote-Tasks-Button | Text "Load remote tasks" | Lädt + **ersetzt** Liste mit `remoteTasks.json` |
+| Bearbeiten-Button | Text "Edit" | Öffnet Inline-Edit-Mode |
 | Löschen-Button | Text "Delete" | |
 | Speichern-Button (Edit) | Text "Save" | |
+| Abbrechen-Button (Edit) | Text "Cancel" | |
 
-> **⚠️ Geolocation:** Das Hinzufügen einer Aufgabe ruft `navigator.geolocation.getCurrentPosition` auf. Ohne explizites Mocken schlägt `addTask` lautlos fehl – die Aufgabe wird nie gespeichert.
+---
+
+## Teil 2: Code-Driven vs. Codegen – Zwei Wege zum Test
+
+Bevor du mit den Exercises beginnst, lerne die zwei grundlegenden Ansätze kennen, wie du einen Playwright-Test erstellen kannst:
+
+| | 💻 Code-Driven | 🎬 Codegen (Recorder) |
+|---|---|---|
+| **Vorgehen** | Test von Hand schreiben | Browser-Interaktionen aufzeichnen |
+| **Ergebnis** | Sauberer, wartbarer Code | Funktionierender Code, aber oft redundant |
+| **Locator-Qualität** | Du wählst bewusst die beste Strategie | Playwright wählt automatisch – oft zu fragil |
+| **API-Kenntnisse** | Werden aktiv gelernt | Bleiben oberflächlich |
+| **Einsatz** | ✅ Für alle produktiven Tests | ✅ Für Locator-Discovery und Quick-Starts |
+| **Trainerpräferenz** | ⭐ Bevorzugt | Als Hilfsmittel |
+
+### 💻 Ansatz 1: Code-Driven (vom Trainer empfohlen)
+
+Du schreibst den Test direkt, basierend auf dem Wissen über die App-Struktur und die Playwright-API. Das erzwingt Verständnis der Locator-Strategien und führt zu wartbarem Code.
+
+**Vorgehensweise:**
+1. App im Browser öffnen, DOM mit DevTools erkunden (`F12`)
+2. Locatoren manuell im Inspector / DevTools-Konsole testen: `$$('[data-testid]')`
+3. Test mit der `@playwright/test`-API von Hand schreiben
+4. Mit `PWDEBUG=1` debuggen
+
+```typescript
+// ✅ Code-Driven: Bewusste Locator-Wahl
+test("smoke test – code-driven", async ({ page }) => {
+  await page.goto("/");
+  // Semantisch robust: ARIA-Rolle, nicht CSS-Klasse
+  await expect(page.getByRole("heading", { name: "TodoMatic" })).toBeVisible();
+  // data-testid – stabil gegenüber UI-Änderungen
+  await expect(page.getByTestId("testID-All")).toBeVisible();
+  // ID – eindeutig, direkt aus dem Quellcode bekannt
+  await expect(page.locator("#new-todo-input")).toBeVisible();
+});
+```
+
+### 🎬 Ansatz 2: Codegen (Recorder)
+
+Playwright zeichnet Interaktionen auf und generiert Code. Sinnvoll, um Locatoren schnell zu entdecken oder einen ersten Entwurf zu generieren.
+
+```bash
+# TypeScript
+npx playwright codegen http://localhost:3000
+
+# C# (.NET)
+pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000
+
+# VS Code: Testing-Seitenleiste → "Record new"-Button
+```
+
+Typische Codegen-Ausgabe für denselben Test:
+
+```typescript
+// ⚠️ Codegen-Output: funktioniert, ist aber oft zu spezifisch
+test("smoke test – codegen", async ({ page }) => {
+  await page.goto("http://localhost:3000/");
+  // Codegen wählt manchmal fragile Selektoren
+  await expect(page.locator("h2")).toContainText("TodoMatic");
+  // Oder: rollenbasiert, aber mit absolutem URL
+  await page.locator("button").filter({ hasText: "All" }).click();
+});
+```
+
+### 🔄 Empfohlener Workflow: das Beste aus beiden Welten
+
+1. **Codegen starten** → Interaktionen aufzeichnen → Locatoren beobachten
+2. **Generierten Code als Inspiration verwenden** – aber nie blind übernehmen
+3. **Code manuell verbessern**: fragile Selektoren durch ARIA-Rollen / `data-testid` ersetzen
+4. **Page Object** daraus bauen (Exercise 4), damit Locatoren nur einmal definiert werden
+
+> **Übung:** Starte Codegen, füge eine Aufgabe hinzu und lösche sie. Vergleiche den generierten Code mit dem Code-Driven-Ansatz aus Exercise 1. Welche Unterschiede erkennst du?
 
 ---
 
@@ -327,14 +536,15 @@ public override BrowserTypeLaunchOptions LaunchOptions =>
 
 **Aufgabe:**
 
-Schreibe einen Test, der:
+Schreibe den Test **code-driven** (ohne Codegen):
 1. Die App öffnet
 2. Den Browser-Tab-Titel prüft
 3. Die Überschrift "TodoMatic" prüft
 4. Das Eingabefeld und den "Add"-Button prüft
 5. Alle drei Filter-Buttons prüft
+6. Den initialen Aufgaben-Zähler prüft ("1 task remaining")
 
-> **🎬 Tipp:** Nutze zuerst **Codegen** (`npx playwright codegen http://localhost:3000` bzw. `pwsh playwright.ps1 codegen`), um dir automatisch einen Startpunkt generieren zu lassen. Beobachte, welche Locatoren Codegen für die Filter-Buttons wählt.
+> **💡 Ablauf:** Öffne zuerst `http://localhost:3000` im Browser und drücke `F12`. Erkunde das DOM und suche die richtigen Locatoren. Schreibe dann den Test von Hand. Nutze **danach** Codegen zum Vergleich – was hat Codegen anders gewählt?
 
 <details>
 <summary>💡 Lösungshinweis TypeScript</summary>
@@ -350,17 +560,20 @@ test("smoke test - app loads correctly", async ({ page }) => {
   // Browser-Titel
   await expect(page).toHaveTitle(/TodoMatic/);
 
-  // Haupt-Überschrift
+  // Haupt-Überschrift via ARIA-Rolle (robust, barrierefrei)
   await expect(page.getByRole("heading", { name: "TodoMatic" })).toBeVisible();
 
-  // Formular-Elemente
+  // Formular via ID (aus dem Quellcode bekannt)
   await expect(page.locator("#new-todo-input")).toBeVisible();
   await expect(page.locator("#myUniqueID")).toBeVisible();
 
-  // Filter-Buttons via data-testid
+  // Filter-Buttons via data-testid (bewusst stabil gewählt)
   await expect(page.getByTestId("testID-All")).toBeVisible();
   await expect(page.getByTestId("testID-Active")).toBeVisible();
   await expect(page.getByTestId("testID-Completed")).toBeVisible();
+
+  // Initialer Zähler – App startet mit 1 Aufgabe!
+  await expect(page.locator("#list-heading")).toContainText("1 task remaining");
 });
 ```
 
@@ -371,7 +584,7 @@ npx playwright test smoke.spec.ts
 </details>
 
 <details>
-<summary>💡 Lösungshinweis C#</summary>
+<summary>💡 Lösungshinweis C# – MSTest</summary>
 
 Erstelle `SmokeTests.cs`:
 
@@ -386,21 +599,16 @@ public class SmokeTests : PageTest
     {
         await Page.GotoAsync("http://localhost:3000");
 
-        // Browser-Titel
         await Expect(Page).ToHaveTitleAsync(new Regex("TodoMatic"));
-
-        // Haupt-Überschrift
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "TodoMatic" }))
             .ToBeVisibleAsync();
-
-        // Formular-Elemente
         await Expect(Page.Locator("#new-todo-input")).ToBeVisibleAsync();
         await Expect(Page.Locator("#myUniqueID")).ToBeVisibleAsync();
-
-        // Filter-Buttons via data-testid
         await Expect(Page.GetByTestId("testID-All")).ToBeVisibleAsync();
         await Expect(Page.GetByTestId("testID-Active")).ToBeVisibleAsync();
         await Expect(Page.GetByTestId("testID-Completed")).ToBeVisibleAsync();
+        // App startet mit 1 Aufgabe – nicht mit 0!
+        await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
     }
 }
 ```
@@ -409,8 +617,64 @@ public class SmokeTests : PageTest
 **VS Code:** Testing-Seitenleiste → Einzelnen Test starten
 
 ```bash
-# Kommandozeile
 dotnet test --filter "AppLoadsCorrectly"
+```
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C# – NUnit</summary>
+
+```csharp
+using Microsoft.Playwright.NUnit;
+
+[TestFixture]
+public class SmokeTests : PageTest
+{
+    [Test]
+    public async Task AppLoadsCorrectly()
+    {
+        await Page.GotoAsync("http://localhost:3000");
+        await Expect(Page).ToHaveTitleAsync(new Regex("TodoMatic"));
+        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "TodoMatic" }))
+            .ToBeVisibleAsync();
+        await Expect(Page.Locator("#new-todo-input")).ToBeVisibleAsync();
+        await Expect(Page.GetByTestId("testID-All")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+    }
+}
+```
+
+```bash
+dotnet test --filter "AppLoadsCorrectly"
+```
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C# – xUnit</summary>
+
+```csharp
+using Microsoft.Playwright.Xunit;
+
+public class SmokeTests : PageTest
+{
+    [Fact]
+    public async Task AppLoadsCorrectly()
+    {
+        await Page.GotoAsync("http://localhost:3000");
+        await Expect(Page).ToHaveTitleAsync(new Regex("TodoMatic"));
+        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "TodoMatic" }))
+            .ToBeVisibleAsync();
+        await Expect(Page.Locator("#new-todo-input")).ToBeVisibleAsync();
+        await Expect(Page.GetByTestId("testID-All")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+    }
+}
+```
+
+```bash
+dotnet test --filter "FullyQualifiedName~SmokeTests"
 ```
 
 </details>
@@ -641,7 +905,239 @@ Schränkt einen breiten Locator auf Elemente ein, die bestimmten Text enthalten.
 
 ---
 
-## Exercise 4: Filter-Funktionalität testen
+## Exercise 4: Page Object Model – Wartbarkeit und Wiederverwendung
+
+**Ziel:** Locatoren und Aktionen in einer Klasse kapseln, statt sie in jedem Test zu wiederholen. Das liefert drei konkrete Vorteile:
+
+1. **Wartbarkeit:** Ändert sich z. B. `#myUniqueID` zu `#add-btn`, wird nur **eine Stelle** angepasst – alle Tests laufen sofort wieder
+2. **Wiederverwendung:** `addTask()`, `deleteTask()` usw. werden von vielen Tests genutzt – kein Copy-Paste, kein Drift
+3. **Lesbarkeit:** Tests beschreiben *Was* getestet wird, nicht *Wie* das DOM navigiert wird
+
+**Aufgabe:**
+
+1. Erstelle eine `TodoPage`-Klasse mit Locatoren als Properties und Aktionen als Methoden
+2. Schreibe die Tests aus Exercise 2 und 3 damit neu – beobachte, wie viel kürzer sie werden
+3. Schreibe einen neuen Test für den vollständigen Task-Lifecycle (hinzufügen → bearbeiten → abschließen → filtern → löschen) in wenigen, gut lesbaren Zeilen
+
+<details>
+<summary>💡 Lösungshinweis TypeScript – Page Object</summary>
+
+`tests/pages/TodoPage.ts`:
+
+```typescript
+import { type Page, type Locator, expect } from "@playwright/test";
+
+export class TodoPage {
+  // ── Locatoren als readonly Properties ──────────────────────────────────────
+  // Einmal definiert – wenn sich ein Selektor ändert, nur hier anpassen.
+  readonly addInput: Locator;
+  readonly addButton: Locator;
+  readonly taskCount: Locator;
+  readonly filterAll: Locator;
+  readonly filterActive: Locator;
+  readonly filterCompleted: Locator;
+  readonly loadRemoteButton: Locator;
+
+  constructor(private readonly page: Page) {
+    this.addInput         = page.locator("#new-todo-input");
+    this.addButton        = page.locator("#myUniqueID");
+    this.taskCount        = page.locator("#list-heading");
+    this.filterAll        = page.getByTestId("testID-All");
+    this.filterActive     = page.getByTestId("testID-Active");
+    this.filterCompleted  = page.getByTestId("testID-Completed");
+    this.loadRemoteButton = page.getByRole("button", { name: "Load remote tasks" });
+  }
+
+  // ── Dynamische Locatoren als Methoden ──────────────────────────────────────
+  taskItem(name: string): Locator {
+    return this.page.getByRole("listitem").filter({ hasText: name });
+  }
+  taskList(): Locator { return this.page.getByRole("list"); }
+
+  // ── Aktionen ───────────────────────────────────────────────────────────────
+  async goto(): Promise<void> { await this.page.goto("/"); }
+
+  async addTask(name: string): Promise<void> {
+    await this.addInput.fill(name);
+    await this.addButton.click();
+    await expect(this.taskList().getByText(name)).toBeVisible();
+  }
+
+  async deleteTask(name: string): Promise<void> {
+    await this.taskItem(name).getByRole("button", { name: "Delete" }).click();
+    await expect(this.taskList().getByText(name)).not.toBeVisible();
+  }
+
+  async editTask(oldName: string, newName: string): Promise<void> {
+    const item = this.taskItem(oldName);
+    await item.getByRole("button", { name: "Edit" }).click();
+    await item.getByRole("textbox").fill(newName);
+    await item.getByRole("button", { name: "Save" }).click();
+    await expect(this.taskList().getByText(newName)).toBeVisible();
+  }
+
+  async completeTask(name: string): Promise<void> {
+    await this.taskItem(name).getByRole("checkbox").check();
+  }
+
+  async setFilter(filter: "All" | "Active" | "Completed"): Promise<void> {
+    const btn = { All: this.filterAll, Active: this.filterActive,
+                  Completed: this.filterCompleted }[filter];
+    await btn.click();
+  }
+
+  async getTaskCount(): Promise<number> {
+    const text = await this.taskCount.textContent();
+    return parseInt(text?.match(/\d+/)?.[0] ?? "0");
+  }
+}
+```
+
+`tests/pom.spec.ts`:
+
+```typescript
+import { test, expect } from "@playwright/test";
+import { TodoPage } from "./pages/TodoPage";
+
+test.use({
+  geolocation: { latitude: 48.1372, longitude: 11.5755 },
+  permissions: ["geolocation"],
+});
+
+test("full task lifecycle – lesbarer dank POM", async ({ page }) => {
+  const todo = new TodoPage(page);
+  await todo.goto();
+
+  await todo.addTask("Einkaufen");
+  await todo.editTask("Einkaufen", "Einkaufen gehen");
+  await todo.completeTask("Einkaufen gehen");
+  await todo.setFilter("Completed");
+  await expect(todo.taskItem("Einkaufen gehen")).toBeVisible();
+  await todo.setFilter("All");
+  await todo.deleteTask("Einkaufen gehen");
+  expect(await todo.getTaskCount()).toBe(1); // zurück auf initiale Aufgabe
+});
+```
+
+**Wartbarkeit prüfen:** Ändere im `TodoPage`-Konstruktor `"#myUniqueID"` zu `"#add-task-btn"` – alle Tests schlagen fehl. Ändere es zurück – alle Tests laufen wieder. Kein einziger Test wurde angefasst.
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C# – Page Object (framework-unabhängig)</summary>
+
+`Pages/TodoPage.cs` – wird von MSTest, NUnit und xUnit gleich verwendet:
+
+```csharp
+using Microsoft.Playwright;
+
+public class TodoPage
+{
+    private readonly IPage _page;
+
+    // ── Locatoren als Properties ───────────────────────────────────────────────
+    // Lazy evaluation: kein DOM-Lookup beim Erstellen des Page Objects
+    public ILocator AddInput        => _page.Locator("#new-todo-input");
+    public ILocator AddButton       => _page.Locator("#myUniqueID");
+    public ILocator TaskCount       => _page.Locator("#list-heading");
+    public ILocator FilterAll       => _page.GetByTestId("testID-All");
+    public ILocator FilterActive    => _page.GetByTestId("testID-Active");
+    public ILocator FilterCompleted => _page.GetByTestId("testID-Completed");
+    public ILocator TaskList        => _page.GetByRole(AriaRole.List);
+
+    public TodoPage(IPage page) => _page = page;
+
+    // ── Dynamische Locatoren ───────────────────────────────────────────────────
+    public ILocator TaskItem(string name) =>
+        _page.GetByRole(AriaRole.Listitem).Filter(new() { HasText = name });
+
+    // ── Aktionen ───────────────────────────────────────────────────────────────
+    public Task GotoAsync() => _page.GotoAsync("http://localhost:3000");
+
+    public async Task AddTaskAsync(string name)
+    {
+        await AddInput.FillAsync(name);
+        await AddButton.ClickAsync();
+        await Assertions.Expect(TaskList.GetByText(name)).ToBeVisibleAsync();
+    }
+
+    public async Task DeleteTaskAsync(string name)
+    {
+        await TaskItem(name).GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+        await Assertions.Expect(TaskList.GetByText(name)).Not.ToBeVisibleAsync();
+    }
+
+    public async Task EditTaskAsync(string oldName, string newName)
+    {
+        var item = TaskItem(oldName);
+        await item.GetByRole(AriaRole.Button, new() { Name = "Edit" }).ClickAsync();
+        await item.GetByRole(AriaRole.Textbox).FillAsync(newName);
+        await item.GetByRole(AriaRole.Button, new() { Name = "Save" }).ClickAsync();
+        await Assertions.Expect(TaskList.GetByText(newName)).ToBeVisibleAsync();
+    }
+
+    public Task CompleteTaskAsync(string name) =>
+        TaskItem(name).GetByRole(AriaRole.Checkbox).CheckAsync();
+
+    public Task SetFilterAsync(string filter)
+    {
+        var btn = filter switch
+        {
+            "Active"    => FilterActive,
+            "Completed" => FilterCompleted,
+            _           => FilterAll,
+        };
+        return btn.ClickAsync();
+    }
+
+    public async Task<int> GetTaskCountAsync()
+    {
+        var text = await TaskCount.TextContentAsync();
+        return int.Parse(Regex.Match(text ?? "0", @"\d+").Value);
+    }
+}
+```
+
+Tests (MSTest – NUnit/xUnit analog):
+
+```csharp
+[TestClass]
+public class PomTests : PageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        BaseURL = "http://localhost:3000",
+        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
+        Permissions = new[] { "geolocation" },
+    };
+
+    [TestMethod]   // NUnit: [Test]   xUnit: [Fact]
+    public async Task FullTaskLifecycle()
+    {
+        var todo = new TodoPage(Page);
+        await todo.GotoAsync();
+
+        await todo.AddTaskAsync("Einkaufen");
+        await todo.EditTaskAsync("Einkaufen", "Einkaufen gehen");
+        await todo.CompleteTaskAsync("Einkaufen gehen");
+        await todo.SetFilterAsync("Completed");
+        await Expect(todo.TaskItem("Einkaufen gehen")).ToBeVisibleAsync();
+        await todo.SetFilterAsync("All");
+        await todo.DeleteTaskAsync("Einkaufen gehen");
+        Assert.AreEqual(1, await todo.GetTaskCountAsync());
+    }
+}
+```
+
+**NUnit:** `[TestFixture]` + `[Test]` + `Microsoft.Playwright.NUnit.PageTest`  
+**xUnit:** kein Klassenattribut + `[Fact]` + `Microsoft.Playwright.Xunit.PageTest`  
+**Das `TodoPage`-Objekt selbst bleibt identisch** – es ist framework-unabhängig.
+
+</details>
+
+---
+
+## Exercise 5: Filter-Funktionalität testen
 
 **Ziel:** Zustandsabhängige UI-Tests – prüfe, dass All/Active/Completed die Liste korrekt filtern.
 
@@ -775,7 +1271,7 @@ public class FilterTests : PageTest
 
 ---
 
-## Exercise 5: Netzwerk-Mocking – Remote-Tasks abfangen
+## Exercise 6: Netzwerk-Mocking – Remote-Tasks abfangen
 
 **Ziel:** `page.route()` / `Page.RouteAsync()` einsetzen, um HTTP-Anfragen abzufangen und durch Testdaten zu ersetzen.
 
@@ -938,7 +1434,7 @@ public class NetworkMockTests : PageTest
 
 ---
 
-## Exercise 6: Response-Manipulation – Logo durch Testbild ersetzen
+## Exercise 7: Response-Manipulation – Logo durch Testbild ersetzen
 
 **Ziel:** Das fortgeschrittene Route-Pattern: Echten Request abschicken, dann nur den Body ersetzen. Inspiriert vom "Holiday Theme"-Demo der [norschel/PlaywrightDemos](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_IT_Tage_2025.cs).
 
@@ -1056,160 +1552,397 @@ Dieses `FetchAsync()`-Pattern ist die Kernidee des "Santa Hat"-Demos aus dem [IT
 
 ---
 
-## Exercise 7: Screenshots, Video und Traces
+## Exercise 8: Screenshots, Video und Traces – Diagnose-Werkzeuge aktiv nutzen
 
-**Ziel:** Die drei wichtigsten Diagnosewerkzeuge von Playwright aktiv einsetzen.
+**Ziel:** Die drei wichtigsten Diagnose-Werkzeuge von Playwright gezielt einsetzen – für lokales Debugging und CI-Fehleranalyse.
 
-### Teil A: Screenshot
+**Warum wichtig?** In Headless-CI-Umgebungen kann man nicht live zuschauen. Screenshots, Videos und Traces sind die einzigen Beweise dafür, was im fehlgeschlagenen Test passiert ist.
 
-**Aufgabe:** Konfiguriere die Config für automatische Screenshots bei Fehlern. Schreibe außerdem einen Test, der manuell einen Full-Page-Screenshot aufnimmt.
+---
+
+### Teil A: Screenshots
+
+**Aufgabe:**
+1. Konfiguriere `playwright.config.ts` / `playwright.runsettings` für automatische Screenshots bei Fehlern
+2. Schreibe einen Test, der nach einer Interaktion einen manuellen Full-Page-Screenshot aufnimmt
+3. Schreibe einen Test, der absichtlich fehlschlägt – prüfe, dass der Screenshot in `test-results/` erscheint
+4. **Bonus:** Screenshot eines einzelnen Elements (z. B. nur die Filterschaltflächen)
 
 <details>
 <summary>💡 Lösungshinweis TypeScript</summary>
 
-`playwright.config.ts`:
+`playwright.config.ts` – automatisch bei Fehler:
+
 ```typescript
-use: { screenshot: "only-on-failure" }
+use: {
+  screenshot: "only-on-failure",  // nur bei Fehler
+  // screenshot: "on",            // immer
+}
 ```
 
-Manuell im Test:
+Manueller Screenshot im Test:
+
 ```typescript
-test("screenshot on demand", async ({ page }) => {
+import { test, expect } from "@playwright/test";
+
+test("screenshot after adding task", async ({ page }) => {
   await page.goto("/");
-  await page.screenshot({ path: "tests/screenshots/app-state.png", fullPage: true });
+
+  // Full-Page-Screenshot (inkl. nicht sichtbarem Bereich)
+  await page.screenshot({ path: "tests/screenshots/initial-state.png", fullPage: true });
+
+  await page.locator("#new-todo-input").fill("Screenshot Task");
+  await page.screenshot({ path: "tests/screenshots/after-typing.png" });
 });
+
+test("screenshot of single element", async ({ page }) => {
+  await page.goto("/");
+  // Nur die Filter-Buttons
+  const filters = page.locator("[data-testid^='testID']").first();
+  await filters.screenshot({ path: "tests/screenshots/filter-area.png" });
+});
+
+test("intentionally failing – check screenshot", async ({ page }) => {
+  await page.goto("/");
+  // Dieser Test schlägt fehl → Screenshot landet in test-results/
+  await expect(page.locator("#nonexistent")).toBeVisible({ timeout: 1000 });
+});
+```
+
+```bash
+npx playwright test --reporter=html
+npx playwright show-report  # Screenshots in "Attachments" sichtbar
 ```
 
 </details>
 
 <details>
-<summary>💡 Lösungshinweis C#</summary>
+<summary>💡 Lösungshinweis C# – MSTest</summary>
 
-```csharp
-[TestMethod]
-public async Task TakeScreenshot()
-{
-    await Page.GotoAsync("http://localhost:3000");
-    await Page.ScreenshotAsync(new PageScreenshotOptions
-    {
-        Path = "screenshots/app-state.png",
-        FullPage = true,
-    });
-}
+`playwright.runsettings` (automatisch):
+
+```xml
+<Parameter name="playwright:screenshot" value="only-on-failure" />
 ```
 
-Automatisch bei Fehler (in `playwright.config.json`):
+Oder `playwright.config.json`:
+
 ```json
 { "use": { "screenshot": "only-on-failure" } }
 ```
 
-</details>
-
-### Teil B: Video-Aufnahme
-
-**Aufgabe:** Aktiviere Video-Aufnahme für einen Test und finde die `.webm`-Datei in `test-results/`.
-
-<details>
-<summary>💡 Lösungshinweis TypeScript</summary>
-
-```typescript
-test.use({ video: "on" });
-
-test("record task workflow", async ({ page }) => {
-  await page.goto("/");
-  // ... Interaktionen
-});
-```
-
-Oder global in `playwright.config.ts`:
-```typescript
-use: { video: "retain-on-failure" }
-```
-
-</details>
-
-<details>
-<summary>💡 Lösungshinweis C#</summary>
-
-Per `playwright.config.json`:
-```json
-{ "use": { "video": "retain-on-failure" } }
-```
-
-Oder per Umgebungsvariable vor dem Test:
-```powershell
-$env:PLAYWRIGHT_VIDEO = "on"; dotnet test
-```
-
-</details>
-
-### Teil C: Trace Viewer
-
-**Aufgabe:** Aktiviere Traces, führe einen Test aus und öffne den Trace Viewer. Navigiere durch DOM-Snapshots und Network-Tab.
-
-<details>
-<summary>💡 Lösungshinweis TypeScript</summary>
-
-Manuell im Test steuern:
-```typescript
-test("manual trace", async ({ page, context }) => {
-  await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
-  await page.goto("/");
-  // ... Testschritte ...
-  await context.tracing.stop({ path: "tests/traces/my-trace.zip" });
-});
-```
-
-Trace öffnen:
-```bash
-npx playwright show-trace tests/traces/my-trace.zip
-```
-
-In **VS Code**: Nach fehlgeschlagenem Test → "Show Trace"-Link in der Testing-Seitenleiste.
-
-</details>
-
-<details>
-<summary>💡 Lösungshinweis C#</summary>
+Manuell im Test:
 
 ```csharp
 [TestMethod]
-public async Task TraceTest()
+public async Task ScreenshotAfterAddingTask()
 {
-    await Context.Tracing.StartAsync(new TracingStartOptions
-    {
-        Screenshots = true,
-        Snapshots = true,
-        Sources = true,
-    });
-
     await Page.GotoAsync("http://localhost:3000");
-    // ... Testschritte ...
 
-    await Context.Tracing.StopAsync(new TracingStopOptions
+    // Full-Page-Screenshot
+    await Page.ScreenshotAsync(new PageScreenshotOptions
     {
-        Path = "traces/my-trace.zip",
+        Path = "screenshots/initial-state.png",
+        FullPage = true,
     });
+
+    await Page.Locator("#new-todo-input").FillAsync("Screenshot Task");
+    await Page.ScreenshotAsync(new PageScreenshotOptions
+        { Path = "screenshots/after-typing.png" });
+}
+
+[TestMethod]
+public async Task ScreenshotOfSingleElement()
+{
+    await Page.GotoAsync("http://localhost:3000");
+    // Nur die Filter-Schaltflächen
+    await Page.GetByTestId("testID-All").ScreenshotAsync(new LocatorScreenshotOptions
+        { Path = "screenshots/filter-button.png" });
 }
 ```
 
-Trace öffnen:
-```powershell
-pwsh bin/Debug/net8.0/playwright.ps1 show-trace traces/my-trace.zip
-```
+**In Visual Studio / VS Code** – Screenshot als Testergebnis-Anhang:
 
-In **Visual Studio**: Trace-Datei im Test-Ergebnis-Fenster als Attachment anhängen:
 ```csharp
-TestContext.AddResultFile("traces/my-trace.zip");
+// MSTest
+TestContext.AddResultFile("screenshots/initial-state.png");
+
+// NUnit
+TestContext.AddTestAttachment("screenshots/initial-state.png", "Initial State");
 ```
 
-**Aus PlaywrightDemos:** Tracing wurde ab [BASTA! 2024](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_Basta2024.cs) zum Standard-Debugging-Werkzeug – unverzichtbar in CI/CD, wo kein lokaler Browser verfügbar ist.
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C# – NUnit / xUnit</summary>
+
+**NUnit:**
+
+```csharp
+[TestFixture]
+public class ScreenshotTests : PageTest
+{
+    [Test]
+    public async Task TakeScreenshot()
+    {
+        await Page.GotoAsync("http://localhost:3000");
+        await Page.ScreenshotAsync(new PageScreenshotOptions
+            { Path = "screenshots/state.png", FullPage = true });
+        // Als Anhang an NUnit-Ergebnis
+        TestContext.AddTestAttachment("screenshots/state.png", "App State");
+    }
+}
+```
+
+**xUnit** (Ausgabe per `ITestOutputHelper`):
+
+```csharp
+public class ScreenshotTests : PageTest
+{
+    private readonly ITestOutputHelper _output;
+    public ScreenshotTests(ITestOutputHelper output) => _output = output;
+
+    [Fact]
+    public async Task TakeScreenshot()
+    {
+        await Page.GotoAsync("http://localhost:3000");
+        var path = "screenshots/state.png";
+        await Page.ScreenshotAsync(new PageScreenshotOptions { Path = path, FullPage = true });
+        _output.WriteLine($"Screenshot: {path}");
+    }
+}
+```
 
 </details>
 
 ---
 
-## Exercise 8: Mobile Device Emulation
+### Teil B: Video-Aufnahme
+
+**Aufgabe:**
+1. Aktiviere Video-Aufnahme für einen Test
+2. Führe einen vollständigen Task-Workflow aus (hinzufügen, bearbeiten, löschen)
+3. Finde die `.webm`-Datei in `test-results/` und öffne sie
+4. Konfiguriere `retain-on-failure` – prüfe, dass bei bestehendem Test kein Video entsteht, bei fehlschlagendem schon
+
+<details>
+<summary>💡 Lösungshinweis TypeScript</summary>
+
+```typescript
+import { test, expect } from "@playwright/test";
+
+// Video für diese Test-Datei aktivieren
+test.use({
+  video: "on",                   // immer aufzeichnen
+  // video: "retain-on-failure", // nur bei Fehler behalten (CI-Empfehlung)
+  geolocation: { latitude: 48.1372, longitude: 11.5755 },
+  permissions: ["geolocation"],
+});
+
+test("record task workflow", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#new-todo-input").fill("Video Task");
+  await page.locator("#myUniqueID").click();
+  await expect(page.getByRole("list").getByText("Video Task")).toBeVisible();
+
+  // Edit
+  const item = page.getByRole("listitem").filter({ hasText: "Video Task" });
+  await item.getByRole("button", { name: "Edit" }).click();
+  await item.getByRole("textbox").fill("Video Task bearbeitet");
+  await item.getByRole("button", { name: "Save" }).click();
+
+  // Delete
+  await page.getByRole("listitem").filter({ hasText: "Video Task bearbeitet" })
+    .getByRole("button", { name: "Delete" }).click();
+});
+```
+
+Global in `playwright.config.ts`:
+
+```typescript
+use: { video: "retain-on-failure" }
+```
+
+Videos landen in `test-results/<test-name>/video.webm`. Im HTML-Report sind sie direkt eingebettet:
+
+```bash
+npx playwright show-report
+```
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C# (alle Frameworks)</summary>
+
+Per Umgebungsvariable (alle Frameworks):
+
+```bash
+PLAYWRIGHT_VIDEO=on dotnet test
+PLAYWRIGHT_VIDEO=retain-on-failure dotnet test
+```
+
+Per `playwright.config.json`:
+
+```json
+{ "use": { "video": "retain-on-failure" } }
+```
+
+Videos werden in `test-results/` abgelegt. Pfad im Test ausgeben:
+
+```csharp
+// MSTest
+[TestCleanup]
+public void SaveVideoPath()
+{
+    // Video-Pfad ist im Context verfügbar
+    TestContext.WriteLine($"Video: test-results/{TestContext.TestName}/video.webm");
+}
+```
+
+</details>
+
+---
+
+### Teil C: Trace Viewer – vollständiger Zeitstrahl
+
+**Aufgabe:**
+1. Aktiviere Traces manuell im Test mit `context.tracing.start()`
+2. Führe einen Add-Task-Workflow durch
+3. Stoppe und speichere den Trace als `.zip`
+4. Öffne ihn mit `npx playwright show-trace` / `playwright.ps1 show-trace`
+5. Navigiere durch DOM-Snapshots → erkunde den **Network**-Tab → sieh dir jeden Schritt im **Actions**-Panel an
+
+<details>
+<summary>💡 Lösungshinweis TypeScript</summary>
+
+```typescript
+import { test, expect } from "@playwright/test";
+
+test.use({
+  geolocation: { latitude: 48.1372, longitude: 11.5755 },
+  permissions: ["geolocation"],
+});
+
+test("manual trace – add and delete task", async ({ page, context }) => {
+  // Trace starten (screenshots + DOM-Snapshots + Quellcode)
+  await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+
+  await page.goto("/");
+  await page.locator("#new-todo-input").fill("Trace Task");
+  await page.locator("#myUniqueID").click();
+  await expect(page.getByRole("list").getByText("Trace Task")).toBeVisible();
+  await page.getByRole("listitem").filter({ hasText: "Trace Task" })
+    .getByRole("button", { name: "Delete" }).click();
+
+  // Trace stoppen und als ZIP speichern
+  await context.tracing.stop({ path: "tests/traces/add-delete-trace.zip" });
+});
+```
+
+```bash
+# Trace öffnen (öffnet Browser mit Trace-Viewer)
+npx playwright show-trace tests/traces/add-delete-trace.zip
+
+# In VS Code: nach fehlgeschlagenem Test → "Show Trace"-Link in Testing-Seitenleiste
+```
+
+Global in `playwright.config.ts` aktivieren:
+
+```typescript
+use: { trace: "on-first-retry" }  // nur beim Retry – CI-Empfehlung
+// use: { trace: "on" }           // immer
+```
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C# – MSTest</summary>
+
+```csharp
+[TestClass]
+public class TraceTests : PageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        BaseURL = "http://localhost:3000",
+        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
+        Permissions = new[] { "geolocation" },
+    };
+
+    [TestMethod]
+    public async Task ManualTrace()
+    {
+        await Context.Tracing.StartAsync(new TracingStartOptions
+        {
+            Screenshots = true,
+            Snapshots = true,
+            Sources = true,
+        });
+
+        await Page.GotoAsync("/");
+        await Page.Locator("#new-todo-input").FillAsync("Trace Task");
+        await Page.Locator("#myUniqueID").ClickAsync();
+        await Expect(Page.GetByRole(AriaRole.List).GetByText("Trace Task")).ToBeVisibleAsync();
+
+        await Context.Tracing.StopAsync(new TracingStopOptions
+            { Path = "traces/add-task-trace.zip" });
+
+        // Als Testergebnis-Anhang in Visual Studio sichtbar machen
+        TestContext.AddResultFile("traces/add-task-trace.zip");
+    }
+}
+```
+
+```powershell
+# Trace öffnen
+pwsh bin/Debug/net8.0/playwright.ps1 show-trace traces/add-task-trace.zip
+```
+
+**NUnit:**
+
+```csharp
+[TestFixture]
+public class TraceTests : PageTest
+{
+    [Test]
+    public async Task ManualTrace()
+    {
+        await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true });
+        await Page.GotoAsync("http://localhost:3000");
+        // ... Testschritte ...
+        await Context.Tracing.StopAsync(new() { Path = "traces/trace.zip" });
+        TestContext.AddTestAttachment("traces/trace.zip", "Playwright Trace");
+    }
+}
+```
+
+**xUnit:**
+
+```csharp
+public class TraceTests : PageTest
+{
+    private readonly ITestOutputHelper _output;
+    public TraceTests(ITestOutputHelper output) => _output = output;
+
+    [Fact]
+    public async Task ManualTrace()
+    {
+        await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true });
+        await Page.GotoAsync("http://localhost:3000");
+        // ... Testschritte ...
+        await Context.Tracing.StopAsync(new() { Path = "traces/trace.zip" });
+        _output.WriteLine("Trace: traces/trace.zip");
+    }
+}
+```
+
+> **Aus PlaywrightDemos:** Tracing ist seit [BASTA! 2024](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_Basta2024.cs) das Standard-Debugging-Werkzeug in allen Konferenz-Demos – unverzichtbar in CI/CD, wo kein lokaler Browser verfügbar ist.
+
+</details>
+
+---
+
+## Exercise 9: Mobile Device Emulation
 
 **Ziel:** Die App auf Mobilgeräten testen – Viewport, User-Agent, Touch-Events und Pixel-Ratio werden automatisch gesetzt.
 
@@ -1308,7 +2041,7 @@ foreach (var device in Playwright.Devices.Keys)
 
 ---
 
-## Exercise 9: Cross-Browser Testing
+## Exercise 10: Cross-Browser Testing
 
 **Ziel:** Tests parallel in Chromium, Firefox und WebKit (Safari) ausführen.
 
@@ -1405,7 +2138,7 @@ dotnet test --filter "TestCategory=firefox"
 
 ---
 
-## Exercise 10: JavaScript in die Seite injizieren mit `page.evaluate()`
+## Exercise 11: JavaScript in die Seite injizieren mit `page.evaluate()`
 
 **Ziel:** Das fortgeschrittenste Feature – JavaScript direkt im Browser-Kontext ausführen. Inspiriert vom spektakulären Canvas-Overlay-Demo aus den [PlaywrightDemos BASTA! Spring 2026](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_BastaSpring2026.cs).
 
@@ -1590,127 +2323,79 @@ Der [BASTA! Spring 2026 Demo](https://github.com/norschel/PlaywrightDemos/blob/m
 
 ---
 
-## Exercise 11: CI/CD mit GitHub Actions
+## Exercise 12: CI/CD – GitHub Actions, Azure Pipelines und Docker
 
-**Ziel:** Playwright-Tests in einer GitHub Actions-Pipeline automatisieren.
+**Ziel:** Playwright-Tests in drei verschiedenen Ausführungsumgebungen automatisieren. Wähle die Variante, die zu deiner Infrastruktur passt.
 
-**Aufgabe:**
+**Aufgabe:** Implementiere die CI-Pipeline mit einer der drei Varianten (oder alle drei zum Vergleich):
+1. Trigger auf Push und Pull Request auf `main`
+2. App starten, Tests ausführen
+3. Artefakte (Reports, Screenshots, Traces) speichern
 
-Erstelle `.github/workflows/playwright.yml` (TypeScript) bzw. `.github/workflows/playwright-dotnet.yml` (C#):
+---
 
-1. Trigger: Push und Pull Request auf `main`
-2. Installiere Dependencies und Playwright-Browser
-3. Führe Tests aus
-4. Speichere HTML-Report und Artefakte (Screenshots, Videos, Traces)
+### Variante A: GitHub Actions
 
 <details>
-<summary>💡 Lösungshinweis TypeScript (GitHub Actions)</summary>
+<summary>💡 TypeScript – GitHub Actions</summary>
+
+`.github/workflows/playwright.yml`:
 
 ```yaml
 name: Playwright Tests (TypeScript)
-
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  push:    { branches: [main] }
+  pull_request: { branches: [main] }
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run Playwright tests
-        run: npx playwright test
-
-      - name: Upload HTML Report
-        uses: actions/upload-artifact@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
         if: always()
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 14
-
-      - name: Upload test artifacts (nur bei Fehler)
-        uses: actions/upload-artifact@v4
+        with: { name: playwright-report, path: playwright-report/, retention-days: 14 }
+      - uses: actions/upload-artifact@v4
         if: failure()
-        with:
-          name: test-results
-          path: test-results/
-          retention-days: 7
+        with: { name: test-results, path: test-results/, retention-days: 7 }
 ```
 
 </details>
 
 <details>
-<summary>💡 Lösungshinweis C# / .NET (GitHub Actions)</summary>
+<summary>💡 C# / .NET – GitHub Actions</summary>
 
 ```yaml
 name: Playwright Tests (.NET)
-
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  push:    { branches: [main] }
+  pull_request: { branches: [main] }
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.x
-
-      - name: Setup Node.js (für die Todo-App)
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install and start Todo App
-        run: |
-          npm ci
-          npm run build
-          npx serve dist -p 3000 &
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: 8.x }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Build and start Todo App
+        run: npm ci && npm run build && npx serve dist -p 3000 &
         working-directory: ./todo-react-playwright
-
-      - name: Build test project
-        run: dotnet build TodoPlaywrightTests/
-
-      - name: Install Playwright browsers
-        run: pwsh TodoPlaywrightTests/bin/Debug/net8.0/playwright.ps1 install --with-deps
-
-      - name: Run Playwright tests
-        run: dotnet test TodoPlaywrightTests/ --logger trx --results-directory TestResults/
-        env:
-          PLAYWRIGHT_BASE_URL: http://localhost:3000
-
-      - name: Upload TRX results
-        uses: actions/upload-artifact@v4
+      - run: dotnet build TodoPlaywrightTests/
+      - run: pwsh TodoPlaywrightTests/bin/Debug/net8.0/playwright.ps1 install --with-deps
+      - run: dotnet test TodoPlaywrightTests/ --logger trx --results-directory TestResults/
+        env: { PLAYWRIGHT_BASE_URL: "http://localhost:3000" }
+      - uses: actions/upload-artifact@v4
         if: always()
-        with:
-          name: test-results-dotnet
-          path: TestResults/
-          retention-days: 14
-
-      - name: Upload Playwright artifacts (Traces, Screenshots)
-        uses: actions/upload-artifact@v4
+        with: { name: test-results-dotnet, path: TestResults/, retention-days: 14 }
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-artifacts
@@ -1721,8 +2406,336 @@ jobs:
           retention-days: 7
 ```
 
-**Aus PlaywrightDemos:**  
-Das [dotnet.yml](https://github.com/norschel/PlaywrightDemos/blob/main/.github/workflows/dotnet.yml) aus den PlaywrightDemos lädt `.webm`, `.png` und `.zip`-Traces als CI-Artefakte hoch und nutzt das `[TestCategory("CICD")]`-Tag, um gezielt nur produktionsreife Tests in der Pipeline auszuführen.
+**Tipp aus PlaywrightDemos:** Nutze `[TestCategory("CICD")]` (MSTest) / `[Category("CICD")]` (NUnit) / `[Trait("Category","CICD")]` (xUnit), um nur produktionsreife Tests in CI auszuführen: `dotnet test --filter "TestCategory=CICD"`.
+
+</details>
+
+---
+
+### Variante B: Azure Pipelines
+
+<details>
+<summary>💡 TypeScript – Azure Pipelines</summary>
+
+`azure-pipelines.yml`:
+
+```yaml
+trigger:
+  - main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: NodeTool@0
+    inputs: { versionSpec: "20.x" }
+    displayName: Install Node.js
+
+  - script: npm ci
+    displayName: Install dependencies
+
+  - script: npx playwright install --with-deps
+    displayName: Install Playwright browsers
+
+  - script: npx playwright test --reporter=junit,html
+    displayName: Run Playwright tests
+    continueOnError: true
+
+  - task: PublishTestResults@2
+    condition: always()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: test-results/results.xml
+      mergeTestResults: true
+      testRunTitle: Playwright TypeScript Tests
+
+  - task: PublishPipelineArtifact@1
+    condition: always()
+    inputs:
+      targetPath: playwright-report
+      artifact: playwright-report
+      publishLocation: pipeline
+```
+
+JUnit-Reporter in `playwright.config.ts` aktivieren:
+
+```typescript
+reporter: [["html"], ["junit", { outputFile: "test-results/results.xml" }]],
+```
+
+</details>
+
+<details>
+<summary>💡 C# / .NET – Azure Pipelines</summary>
+
+```yaml
+trigger:
+  - main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: UseDotNet@2
+    inputs: { version: "8.x" }
+    displayName: Install .NET 8
+
+  - task: NodeTool@0
+    inputs: { versionSpec: "20.x" }
+    displayName: Install Node.js
+
+  - script: npm ci && npm run build && npx serve dist -p 3000 &
+    displayName: Build and start Todo App
+    workingDirectory: $(System.DefaultWorkingDirectory)/todo-react-playwright
+
+  - script: dotnet build TodoPlaywrightTests/
+    displayName: Build test project
+
+  - script: pwsh TodoPlaywrightTests/bin/Debug/net8.0/playwright.ps1 install --with-deps
+    displayName: Install Playwright browsers
+
+  - script: >
+      dotnet test TodoPlaywrightTests/
+      --logger trx
+      --results-directory $(Agent.TempDirectory)/TestResults
+    displayName: Run Playwright tests
+    continueOnError: true
+    env:
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+  - task: PublishTestResults@2
+    condition: always()
+    inputs:
+      testResultsFormat: VSTest
+      testResultsFiles: $(Agent.TempDirectory)/TestResults/*.trx
+      mergeTestResults: true
+      testRunTitle: Playwright .NET Tests
+
+  - task: PublishPipelineArtifact@1
+    condition: failed()
+    inputs:
+      targetPath: $(System.DefaultWorkingDirectory)/traces
+      artifact: playwright-traces
+      publishLocation: pipeline
+```
+
+</details>
+
+---
+
+### Variante C: Docker-Container
+
+Docker garantiert reproduzierbare, isolierte Testläufe unabhängig vom Host-System. Microsoft stellt offizielle Playwright-Images mit vorinstallierten Browsern bereit.
+
+<details>
+<summary>💡 TypeScript – Dockerfile + Ausführung</summary>
+
+`Dockerfile`:
+
+```dockerfile
+# Offizielles Playwright-Image – alle Browser vorinstalliert
+FROM mcr.microsoft.com/playwright:v1.52.0-jammy
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+CMD ["npx", "playwright", "test"]
+```
+
+`.dockerignore`:
+
+```
+node_modules
+test-results
+playwright-report
+.git
+```
+
+```bash
+docker build -t todo-playwright-tests .
+
+# Tests ausführen
+docker run --rm todo-playwright-tests
+
+# Mit spezifischem Browser
+docker run --rm -e BROWSER=firefox todo-playwright-tests
+
+# Ergebnisse aus Container extrahieren
+docker run --rm \
+  -v $(pwd)/test-results:/app/test-results \
+  -v $(pwd)/playwright-report:/app/playwright-report \
+  todo-playwright-tests
+```
+
+</details>
+
+<details>
+<summary>💡 C# / .NET – Multi-Stage Dockerfile (inspiriert von PlaywrightDemos)</summary>
+
+`Dockerfile`:
+
+```dockerfile
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
+WORKDIR /app
+COPY . .
+RUN dotnet build TodoPlaywrightTests/
+
+# Stage 2: Test-Ausführung im Playwright-Runtime-Image
+# (Browser + Systemabhängigkeiten bereits enthalten)
+FROM mcr.microsoft.com/playwright/dotnet:v1.52.0-jammy AS test
+WORKDIR /app
+COPY --from=build /app/TodoPlaywrightTests/bin/Debug/net8.0 .
+ENV PLAYWRIGHT_BASE_URL=http://host-gateway:3000
+ENTRYPOINT ["dotnet", "test", "TodoPlaywrightTests.dll", \
+            "--filter", "TestCategory=CICD", \
+            "--logger", "trx;LogFileName=results.trx"]
+```
+
+```bash
+docker build -t todo-playwright-tests-dotnet .
+
+# App auf Host muss laufen (npm run dev)
+docker run --rm \
+  --add-host=host-gateway:host-gateway \
+  -e PLAYWRIGHT_BASE_URL=http://host-gateway:3000 \
+  -v $(pwd)/TestResults:/app/TestResults \
+  todo-playwright-tests-dotnet
+```
+
+**docker compose** – App und Tests zusammen:
+
+```yaml
+# docker-compose.test.yml
+services:
+  app:
+    build: { context: ./todo-react-playwright }
+    ports: ["3000:3000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 5s
+      retries: 10
+  tests:
+    build: { context: ./TodoPlaywrightTests }
+    depends_on:
+      app: { condition: service_healthy }
+    environment:
+      PLAYWRIGHT_BASE_URL: http://app:3000
+    volumes:
+      - ./TestResults:/app/TestResults
+```
+
+```bash
+docker compose -f docker-compose.test.yml up --exit-code-from tests
+```
+
+</details>
+
+---
+
+## Exercise 13 (Bonus): Azure Playwright Testing Service
+
+**Ziel:** Tests auf einer Azure-verwalteten Browser-Farm ausführen – skalierbar, ohne eigene Browser-Infrastruktur. Das Enterprise-Muster aus den [PlaywrightDemos ab IT-Tage 2025](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/AzurePlaywrightTests_BastaSpring2026.cs).
+
+**Voraussetzungen:** Azure-Abonnement, Playwright Testing Workspace im Azure Portal erstellt.
+
+<details>
+<summary>💡 TypeScript – Azure Playwright Testing Service</summary>
+
+```bash
+npm install --save-dev @azure/microsoft-playwright-testing
+```
+
+`playwright.service.config.ts`:
+
+```typescript
+import { defineConfig } from "@playwright/test";
+import { getServiceConfig, ServiceOS } from "@azure/microsoft-playwright-testing";
+import config from "./playwright.config";
+
+export default defineConfig(
+  config,
+  getServiceConfig(config, {
+    os: ServiceOS.LINUX,
+    runId: process.env.BUILD_ID ?? new Date().toISOString(),
+  }),
+  {
+    reporter: [
+      ["list"],
+      ["@azure/microsoft-playwright-testing/reporter"],
+    ],
+  }
+);
+```
+
+```bash
+export PLAYWRIGHT_SERVICE_URL="wss://eastus.api.playwright.microsoft.com/accounts/<ID>/authorize/accessToken"
+export PLAYWRIGHT_SERVICE_ACCESS_TOKEN="<token>"
+
+# Tests in Azure ausführen
+npx playwright test --config=playwright.service.config.ts
+
+# Sharding – 4 parallele Browser in Azure
+npx playwright test --config=playwright.service.config.ts --shard=1/4
+```
+
+</details>
+
+<details>
+<summary>💡 C# / NUnit – Azure Playwright Testing Service (wie in PlaywrightDemos)</summary>
+
+```bash
+dotnet add package Microsoft.Playwright.NUnit
+dotnet add package Azure.Developer.MicrosoftPlaywrightTesting.NUnit
+```
+
+`PlaywrightServiceSetup.cs`:
+
+```csharp
+using Azure.Developer.MicrosoftPlaywrightTesting.NUnit;
+[assembly: NUnit.Framework.Parallelizable(NUnit.Framework.ParallelScope.Fixtures)]
+
+[SetUpFixture]
+public class PlaywrightServiceSetup : PlaywrightServiceNUnitSetup { }
+```
+
+`AzurePlaywrightTests.cs`:
+
+```csharp
+using Azure.Developer.MicrosoftPlaywrightTesting.NUnit;
+
+[TestFixture]
+public class AzurePlaywrightTests : PlaywrightServiceTest
+{
+    public IPage Page { get; private set; } = null!;
+
+    [SetUp]
+    public async Task SetUp() => Page = await Context.NewPageAsync();
+
+    [TearDown]
+    public async Task TearDown() => await Page.CloseAsync();
+
+    [Test]
+    [Category("CICD")]
+    public async Task AppLoadsOnAzureService()
+    {
+        await Page.GotoAsync("http://localhost:3000");
+        await Assertions.Expect(Page).ToHaveTitleAsync(new Regex("TodoMatic"));
+        TestContext.Out.WriteLine($"Browser: {Page.Context.Browser?.BrowserType.Name}");
+    }
+}
+```
+
+```bash
+export PLAYWRIGHT_SERVICE_URL="wss://eastus.api.playwright.microsoft.com/..."
+export PLAYWRIGHT_SERVICE_ACCESS_TOKEN="<token>"
+dotnet test --filter "TestCategory=CICD"
+```
+
+**Vorteile:**
+- Browser laufen in Azure-Containern – keine Browser-Installation im CI-Agent nötig
+- Bis zu 50 parallele Browser ohne eigene Infrastruktur
+- Ergebnisse und Traces direkt im Azure Portal sichtbar
 
 </details>
 
@@ -1730,24 +2743,30 @@ Das [dotnet.yml](https://github.com/norschel/PlaywrightDemos/blob/main/.github/w
 
 ## Zusammenfassung: Gelerntes auf einen Blick
 
-| Konzept | TypeScript API | C# API | Übung |
-|---|---|---|---|
-| Navigation | `page.goto()` | `Page.GotoAsync()` | 1–11 |
-| ARIA-Locatoren | `getByRole()`, `getByTestId()` | `GetByRole()`, `GetByTestId()` | 1, 3, 4 |
-| Formular-Interaktion | `fill()`, `click()`, `check()` | `FillAsync()`, `ClickAsync()` | 2, 3 |
-| Locator-Chaining | `.filter({ hasText })` | `.Filter(new() { HasText })` | 3, 4 |
-| Geolocation mocken | `test.use({ geolocation })` | `ContextOptions()` override | 2, 3, 8 |
-| Netzwerk-Mocking | `page.route()` + `fulfill()` | `RouteAsync()` + `FulfillAsync()` | 5, 6 |
-| Response-Manipulation | `route.fetch()` | `route.FetchAsync()` | 6 |
-| Screenshots | `page.screenshot()` | `Page.ScreenshotAsync()` | 7 |
-| Video | `video: "retain-on-failure"` | `playwright.config.json` | 7 |
-| Trace Viewer | `show-trace trace.zip` | `playwright.ps1 show-trace` | 7 |
-| Mobile Emulation | `devices["iPhone 15 Pro"]` | `Playwright.Devices[...]` | 8 |
-| Cross-Browser | `projects` in Config | `[DataRow("Firefox")]` | 9 |
-| JS-Injektion | `page.evaluate()` | `Page.EvaluateAsync()` | 10 |
-| Codegen | `npx playwright codegen` | `pwsh playwright.ps1 codegen` | alle |
-| Inspector | `PWDEBUG=1` / `page.pause()` | `PWDEBUG=1` / `PauseAsync()` | alle |
-| CI/CD | GitHub Actions YAML | GitHub Actions YAML | 11 |
+| Konzept | TypeScript API | C# API | Framework | Übung |
+|---|---|---|---|---|
+| Navigation | `page.goto()` | `Page.GotoAsync()` | alle | 1–13 |
+| ARIA-Locatoren | `getByRole()`, `getByTestId()` | `GetByRole()`, `GetByTestId()` | alle | 1, 3 |
+| Formular | `fill()`, `click()`, `check()` | `FillAsync()`, `ClickAsync()` | alle | 2, 3 |
+| Locator-Chaining | `.filter({ hasText })` | `.Filter(new() { HasText })` | alle | 3, 5 |
+| **Page Object Model** | Klasse + Properties + Methoden | Klasse + Properties + Methoden | alle | **4** |
+| Geolocation mock | `test.use({ geolocation })` | `ContextOptions()` override | alle | 2, 4, 9 |
+| Network mock | `page.route()` + `fulfill()` | `RouteAsync()` + `FulfillAsync()` | alle | 6, 7 |
+| Response-Manipulation | `route.fetch()` | `route.FetchAsync()` | alle | 7 |
+| **Screenshots** | `page.screenshot()` | `ScreenshotAsync()` | alle | **8** |
+| **Video** | `video: "retain-on-failure"` | `PLAYWRIGHT_VIDEO=on` | alle | **8** |
+| **Trace Viewer** | `show-trace trace.zip` | `playwright.ps1 show-trace` | alle | **8** |
+| Mobile Emulation | `devices["iPhone 15 Pro"]` | `Playwright.Devices[...]` | alle | 9 |
+| Cross-Browser TS | `projects` in Config | – | TypeScript | 10 |
+| Cross-Browser C# | – | `[DataRow]`/`[TestCase]`/`[InlineData]` | MSTest/NUnit/xUnit | 10 |
+| JS-Injektion | `page.evaluate()` | `Page.EvaluateAsync()` | alle | 11 |
+| Codegen | `npx playwright codegen` | `pwsh playwright.ps1 codegen` | alle | Teil 2 |
+| Inspector | `PWDEBUG=1` / `page.pause()` | `PWDEBUG=1` / `PauseAsync()` | alle | Teil 1 |
+| **Code-Driven** | Von Hand schreiben | Von Hand schreiben | alle | **Teil 2** |
+| GitHub Actions | YAML | YAML | alle | 12 |
+| **Azure Pipelines** | YAML | YAML | alle | **12** |
+| **Docker** | Dockerfile | Multi-Stage Dockerfile | alle | **12** |
+| **Azure PW Service** | `playwright.service.config.ts` | `PlaywrightServiceTest` (NUnit) | TS / NUnit | **13** |
 
 ---
 
@@ -1755,11 +2774,12 @@ Das [dotnet.yml](https://github.com/norschel/PlaywrightDemos/blob/main/.github/w
 
 - 📖 [Playwright Dokumentation (TypeScript)](https://playwright.dev/docs/intro)
 - 📖 [Playwright Dokumentation (.NET/C#)](https://playwright.dev/dotnet/docs/intro)
-- 🎭 [norschel/PlaywrightDemos](https://github.com/norschel/PlaywrightDemos) – Konferenz-Demos mit fortgeschrittenen C#-Patterns
+- 🎭 [norschel/PlaywrightDemos](https://github.com/norschel/PlaywrightDemos) – Konferenz-Demos BASTA!/MDD/IT-Tage 2023–2026
 - 🛠 [Playwright Trace Viewer](https://playwright.dev/docs/trace-viewer)
 - 🎬 [Playwright Codegen](https://playwright.dev/docs/codegen)
+- 🐳 [Playwright Docker-Images](https://playwright.dev/docs/docker)
+- ☁️ [Azure Playwright Testing Service](https://learn.microsoft.com/azure/playwright-testing/overview-what-is-microsoft-playwright-testing)
 - 📱 [Emulierte Geräte-Liste](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/deviceDescriptorsSource.json)
-- 🌐 [Azure Playwright Testing Service](https://azure.microsoft.com/de-de/products/playwright-testing) – Cloud-Browser-Farm (in PlaywrightDemos ab IT-Tage 2025 demonstriert)
 - 🔬 [Playwright Inspector & Debugger](https://playwright.dev/docs/debug)
 - 📊 [Playwright HTML Reporter](https://playwright.dev/docs/test-reporters#html-reporter)
 - 🧩 [Playwright VS Code Extension](https://marketplace.visualstudio.com/items?itemName=ms-playwright.playwright)
