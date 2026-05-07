@@ -788,6 +788,141 @@ dotnet test --filter "FullyQualifiedName~SmokeTests"
 
 ---
 
+### ✨ Bonus-Test: Aufgabe anlegen, löschen und Zähler prüfen
+
+**Ziel:** Einen vollständigen CRUD-Zyklus in einem einzigen Test abbilden – Aufgabe hinzufügen, Zähler vor und nach dem Löschen prüfen.
+
+> ⚠️ **Hinweis:** Dieser Test benötigt Geolocation (für den "Add"-Button). Die globale Konfiguration in `playwright.config.ts` / `TestBase.cs` stellt das bereits sicher.
+
+<details>
+<summary>💡 Lösungshinweis TypeScript</summary>
+
+Füge in `tests/smoke.spec.ts` hinzu:
+
+```typescript
+test("add task and delete it – check count", async ({ page }) => {
+  await page.goto("/");
+
+  // Ausgangszustand: App startet mit 1 Aufgabe
+  await expect(page.locator("#list-heading")).toContainText("1 task remaining");
+
+  // Neue Aufgabe anlegen
+  await page.locator("#new-todo-input").fill("Smoke Bonus Task");
+  await page.locator("#myUniqueID").click();
+
+  // Nach dem Hinzufügen: Aufgabe sichtbar, Zähler erhöht
+  await expect(
+    page.getByRole("listitem").filter({ hasText: "Smoke Bonus Task" })
+  ).toBeVisible();
+  await expect(page.locator("#list-heading")).toContainText("2 tasks remaining");
+
+  // Aufgabe löschen – Delete-Button der richtigen Zeile ansteuern
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: "Smoke Bonus Task" })
+    .getByRole("button", { name: "Delete" })
+    .click();
+
+  // Nach dem Löschen: Aufgabe weg, Zähler zurück auf 1
+  await expect(
+    page.getByRole("listitem").filter({ hasText: "Smoke Bonus Task" })
+  ).not.toBeVisible();
+  await expect(page.locator("#list-heading")).toContainText("1 task remaining");
+});
+```
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C# – MSTest</summary>
+
+```csharp
+[TestMethod]
+public async Task AddAndDeleteTask_CheckCount()
+{
+    await Page.GotoAsync("http://localhost:3000");
+
+    // Ausgangszustand
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+
+    // Neue Aufgabe anlegen
+    await Page.Locator("#new-todo-input").FillAsync("Smoke Bonus Task");
+    await Page.Locator("#myUniqueID").ClickAsync();
+
+    // Nach dem Hinzufügen
+    var newItem = Page.GetByRole(AriaRole.Listitem).Filter(new() { HasText = "Smoke Bonus Task" });
+    await Expect(newItem).ToBeVisibleAsync();
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("2 tasks remaining");
+
+    // Aufgabe löschen
+    await newItem.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+
+    // Nach dem Löschen
+    await Expect(newItem).Not.ToBeVisibleAsync();
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+}
+```
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C# – NUnit</summary>
+
+```csharp
+[Test]
+public async Task AddAndDeleteTask_CheckCount()
+{
+    await Page.GotoAsync("http://localhost:3000");
+
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+
+    await Page.Locator("#new-todo-input").FillAsync("Smoke Bonus Task");
+    await Page.Locator("#myUniqueID").ClickAsync();
+
+    var newItem = Page.GetByRole(AriaRole.Listitem).Filter(new() { HasText = "Smoke Bonus Task" });
+    await Expect(newItem).ToBeVisibleAsync();
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("2 tasks remaining");
+
+    await newItem.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+
+    await Expect(newItem).Not.ToBeVisibleAsync();
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+}
+```
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C# – xUnit</summary>
+
+```csharp
+[Fact]
+public async Task AddAndDeleteTask_CheckCount()
+{
+    await Page.GotoAsync("http://localhost:3000");
+
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+
+    await Page.Locator("#new-todo-input").FillAsync("Smoke Bonus Task");
+    await Page.Locator("#myUniqueID").ClickAsync();
+
+    var newItem = Page.GetByRole(AriaRole.Listitem).Filter(new() { HasText = "Smoke Bonus Task" });
+    await Expect(newItem).ToBeVisibleAsync();
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("2 tasks remaining");
+
+    await newItem.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+
+    await Expect(newItem).Not.ToBeVisibleAsync();
+    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+}
+```
+
+</details>
+
+> 🤔 **Stop & Think:** Warum wird der Delete-Button über `.filter({ hasText: "Smoke Bonus Task" })` angesteuert und nicht direkt per `getByRole("button", { name: "Delete" })`? Was würde passieren, wenn mehrere Aufgaben in der Liste stehen?
+
+---
+
 ## Exercise 2: Geolocation mocken und Aufgabe hinzufügen
 
 **Ziel:** Browser-APIs mocken. Die App ruft `navigator.geolocation.getCurrentPosition` beim Hinzufügen auf – ohne Mock passiert nichts.
