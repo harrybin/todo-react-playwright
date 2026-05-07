@@ -7,6 +7,19 @@
 
 ---
 
+## 🌐 Sprachauswahl – TypeScript/JavaScript oder C# (.NET)
+
+Dieses HOL unterstützt beide Technologie-Stacks vollständig. **Wähle einmalig deine Sprache** – alle Setup-Schritte, Debug-Tools und Lösungshinweise sind separat für jede Sprache aufklappbar.
+
+| Deine Sprache | Was du öffnest / liest |
+|---|---|
+| 🟦 **TypeScript / JavaScript** | Blöcke mit 🟦 bzw. „💡 Lösungshinweis TypeScript" – alles andere überspringen |
+| 🟣 **C# / .NET** | Blöcke mit 🟣 bzw. „💡 Lösungshinweis C# – MSTest/NUnit/xUnit" – alles andere überspringen |
+
+> Die **Aufgabentexte** und **konzeptionellen Erklärungen** jeder Übung sind sprachunabhängig und für alle Teilnehmer relevant. Nur die konkreten Code-Beispiele und Setup-Schritte sind nach Sprache getrennt.
+
+---
+
 ## Lernziele
 
 Nach dieser HOL kannst du:
@@ -80,6 +93,9 @@ Nach der Installation erscheint in der Seitenleiste das **Beaker-Symbol** (Testi
 
 ### Visual Studio 2022 (C# / .NET)
 
+<details>
+<summary>🟣 Nur relevant für C# / .NET – Visual Studio 2022</summary>
+
 1. Stelle sicher, dass das **.NET 8 SDK** installiert ist
 2. Öffne den **Test Explorer** (`Test → Test Explorer`)
 3. Playwright-Tests erscheinen dort automatisch nach dem Build
@@ -87,9 +103,14 @@ Nach der Installation erscheint in der Seitenleiste das **Beaker-Symbol** (Testi
 
 > **Tipp:** Visual Studio bietet keinen Playwright Codegen direkt, aber du kannst ihn per PowerShell-Skript aufrufen (siehe Übung 0B).
 
+</details>
+
 ---
 
 ## Teil 0B: Projekt-Setup
+
+<details open>
+<summary>🟦 TypeScript / JavaScript – Setup</summary>
 
 ### Setup: TypeScript / JavaScript (VS Code)
 
@@ -144,7 +165,12 @@ mkdir tests
 npx playwright test --list  # Setup prüfen
 ```
 
+</details>
+
 ---
+
+<details>
+<summary>🟣 C# / .NET – Setup</summary>
 
 ### Setup: C# / .NET – Testframework wählen
 
@@ -287,6 +313,8 @@ PLAYWRIGHT_BASE_URL=http://localhost:3000 dotnet test
 
 > **⚠️ Wichtig:** Starte die TodoMatic-App (`npm run dev`) **manuell**, bevor du C#-Tests ausführst. Im Gegensatz zu TypeScript gibt es für .NET kein eingebautes `webServer`-Äquivalent – die App muss separat gestartet werden.
 
+</details>
+
 ---
 
 ## Teil 0C: App-Konfiguration – Was du über die TodoMatic-App wissen musst
@@ -365,7 +393,8 @@ Bevor du mit den Übungen beginnst, lerne die wichtigsten Playwright-Debugging-T
 
 Codegen zeichnet deine Browser-Interaktionen auf und generiert automatisch Playwright-Testcode.
 
-**TypeScript (VS Code):**
+<details open>
+<summary>🟦 TypeScript / JavaScript</summary>
 
 ```bash
 # Codegen direkt starten
@@ -374,12 +403,17 @@ npx playwright codegen http://localhost:3000
 # Oder in VS Code: Seitenleiste → Testing (Beaker) → "Record new" Button
 ```
 
-**C# (.NET):**
+</details>
+
+<details>
+<summary>🟣 C# / .NET</summary>
 
 ```powershell
 # PowerShell
 pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000
 ```
+
+</details>
 
 **Was passiert:**
 - Ein Browser öffnet sich mit der App
@@ -395,7 +429,8 @@ pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000
 
 Der Inspector erlaubt Step-by-Step-Debugging direkt im Browser.
 
-**TypeScript:**
+<details open>
+<summary>🟦 TypeScript / JavaScript</summary>
 
 ```bash
 # Vor dem Test-Aufruf setzen
@@ -405,24 +440,27 @@ PWDEBUG=1 npx playwright test smoke.spec.ts
 $env:PWDEBUG=1; npx playwright test smoke.spec.ts
 ```
 
-**C#:**
+```typescript
+// Alternativ im Code (hält den Test an):
+await page.pause(); // öffnet den Inspector an dieser Stelle
+```
+
+</details>
+
+<details>
+<summary>🟣 C# / .NET</summary>
 
 ```bash
 # Umgebungsvariable setzen, dann normal testen
 $env:PWDEBUG=1; dotnet test --filter "SmokeTest"
 ```
 
-**Alternativ im Code (hält den Test an):**
-
-```typescript
-// TypeScript
-await page.pause(); // öffnet den Inspector an dieser Stelle
-```
-
 ```csharp
-// C#
+// Alternativ im Code (hält den Test an):
 await Page.PauseAsync(); // öffnet den Inspector an dieser Stelle
 ```
+
+</details>
 
 **Features des Inspectors:**
 - **Step over**: Test Schritt für Schritt ausführen
@@ -435,24 +473,15 @@ await Page.PauseAsync(); // öffnet den Inspector an dieser Stelle
 
 Der Trace Viewer ist ein vollständiger Zeitstrahl des Tests – mit DOM-Snapshots, Netzwerk-Requests und Screenshots zu jedem Schritt.
 
-**TypeScript – Trace nach Test öffnen:**
+<details open>
+<summary>🟦 TypeScript / JavaScript</summary>
 
 ```bash
 npx playwright show-trace test-results/pfad-zum-test/trace.zip
 ```
 
-**C# – Trace nach Test öffnen:**
-
-```powershell
-pwsh bin/Debug/net8.0/playwright.ps1 show-trace test-results/trace.zip
-```
-
-**In VS Code:** Nach einem fehlgeschlagenen Test erscheint in der Test-Ergebnis-Ansicht ein **"Show Trace"**-Link, der den Trace direkt in VS Code öffnet.
-
-**Trace in der Config aktivieren:**
-
 ```typescript
-// playwright.config.ts
+// playwright.config.ts – Trace aktivieren:
 use: {
   trace: "on",               // immer
   // trace: "on-first-retry" // nur beim Retry (empfohlen für CI)
@@ -460,11 +489,24 @@ use: {
 }
 ```
 
+</details>
+
+<details>
+<summary>🟣 C# / .NET</summary>
+
+```powershell
+pwsh bin/Debug/net8.0/playwright.ps1 show-trace test-results/trace.zip
+```
+
 ```csharp
-// In C# per Umgebungsvariable vor dem Test
+// Trace per Umgebungsvariable vor dem Test aktivieren:
 Environment.SetEnvironmentVariable("PLAYWRIGHT_TRACE", "on");
 // Oder manuell im Test (siehe Exercise 7)
 ```
+
+</details>
+
+**In VS Code:** Nach einem fehlgeschlagenen Test erscheint in der Test-Ergebnis-Ansicht ein **"Show Trace"**-Link, der den Trace direkt in VS Code öffnet.
 
 ---
 
@@ -472,20 +514,26 @@ Environment.SetEnvironmentVariable("PLAYWRIGHT_TRACE", "on");
 
 Playwright kann die Browser DevTools für Debugging-Sessions aktivieren.
 
-**TypeScript:**
+<details open>
+<summary>🟦 TypeScript / JavaScript</summary>
 
 ```typescript
 // Browser im sichtbaren Modus + DevTools öffnen
 test.use({ headless: false, launchOptions: { devtools: true } });
 ```
 
-**C#:**
+</details>
+
+<details>
+<summary>🟣 C# / .NET</summary>
 
 ```csharp
 // In playwright.config.json oder per LaunchOptions
 public override BrowserTypeLaunchOptions LaunchOptions =>
     new() { Headless = false, Devtools = true };
 ```
+
+</details>
 
 **Nützlich für:**
 - JavaScript-Fehler in der Konsole prüfen (`page.on('console', ...)`)
