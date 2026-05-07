@@ -59,6 +59,7 @@ Nach dieser HOL kannst du:
 | **Sharding** | Aufteilung der Test-Suite auf mehrere parallele Prozesse oder Maschinen. TypeScript: `--shard=1/4`. Azure Playwright Testing Service ermöglicht bis zu 50 parallele Shard-Container. |
 | **`reuseExistingServer`** | In `playwright.config.ts webServer`: Bei `true` wird kein neuer Server gestartet, wenn Port 3000 bereits belegt ist. In CI sollte dieser Wert `false` sein (`!process.env.CI`), damit kein veralteter Server genutzt wird. |
 | **MCP Server** | *Model Context Protocol Server* – ermöglicht KI-Assistenten (GitHub Copilot, Claude), Playwright-Browser-Tools per natürlicher Sprache zu steuern. Ergänzt den manuellen Testansatz für Exploration und Entwurf. |
+| **playwright-cli** | Token-effizientes CLI-Interface für Browser-Automatisierung (`@playwright/cli`). Stellt einzelne, fokussierte Befehle bereit (`open`, `click`, `fill`, `snapshot`, `route`, …), die Coding-Agents direkt aufrufen können, ohne großes Tool-Schema-Overhead. Gegenstück zum MCP Server: lieber viele kleine Befehle statt eines großen persistenten Tool-Kontexts. |
 
 ---
 
@@ -3488,11 +3489,321 @@ Screenshot der TodoMatic-App. Ist die App mobil nutzbar?
 
 ---
 
+## Exercise 15 (Bonus): Playwright CLI – Token-effiziente Browser-Automatisierung
+
+**Ziel:** Den offiziellen **Playwright CLI** (`@playwright/cli`) kennenlernen – ein schlankes Command-Line-Interface für Browser-Automatisierung, das speziell für Coding-Agents optimiert ist, aber auch manuell sehr praktisch ist.
+
+> **Was ist playwright-cli, und was unterscheidet es vom MCP Server?**  
+> Während der [MCP Server (Exercise 14)](https://github.com/microsoft/playwright-mcp) auf persistente Browser-Sessions und reichhaltige DOM-Introspection setzt, bietet `playwright-cli` bewusst token-effiziente CLI-Befehle als SKILLs. Jeder Befehl ist ein eigenständiger CLI-Aufruf – kein großes Tool-Schema wird ins LLM-Context geladen. Das macht `playwright-cli` zur besseren Wahl für **Coding-Agents mit begrenztem Context-Window** (z. B. beim gleichzeitigen Arbeiten mit großen Codebasen und Browser-Automatisierung).
+
+> 📚 **Docs:** [github.com/microsoft/playwright-cli](https://github.com/microsoft/playwright-cli)
+
+| | playwright-cli | Playwright MCP Server |
+|---|---|---|
+| **Primäre Zielgruppe** | Coding-Agents (Claude Code, GitHub Copilot) + manuelle Nutzung | Explorative Agenten, UI-Interaktion |
+| **Token-Effizienz** | ✅ Hoch – kein Tool-Schema im Context | ⚠️ Mittel – Tool-Schemas und Accessibility Trees |
+| **Persistenz** | Sessions mit `--persistent` (auch cross-restart) | Persistent innerhalb einer Sitzung |
+| **Dashboard** | `playwright-cli show` (visuelles Session-Grid) | – |
+| **Network-Mocking** | `playwright-cli route <pattern>` | Über MCP-Tool-Aufrufe |
+| **Tracing/Video** | `tracing-start/stop`, `video-start/stop` | – |
+| **Code-Erzeugung** | Kein eingebauter Recorder | `npx playwright codegen` separat |
+
+---
+
+### Voraussetzungen
+
+| | |
+|---|---|
+| Node.js | 18+ |
+| Betriebssystem | Linux, macOS, Windows |
+| Coding Agent (optional) | Claude Code, GitHub Copilot Agent Mode, oder ein anderer Agent |
+
+---
+
+### Setup
+
+```bash
+# Global installieren
+npm install -g @playwright/cli@latest
+
+# Verfügbare Befehle anzeigen
+playwright-cli --help
+
+# Skills für Coding-Agents installieren
+# (Claude Code, GitHub Copilot und andere lesen diese Skills automatisch)
+playwright-cli install --skills
+
+# Browser-Session starten und TodoMatic-App öffnen
+playwright-cli open http://localhost:3000 --headed
+```
+
+> ℹ️ **Sessions:** `playwright-cli` hält eine Browser-Instanz im Hintergrund. Alle nachfolgenden Befehle sprechen dieselbe Instanz an – kein erneutes `open` nötig, solange die Session läuft.
+
+---
+
+### Teil A: Manuelle Erkundung der TodoMatic-App
+
+**Aufgabe:** Erkunde die App Schritt für Schritt per CLI-Befehlen – ohne eine einzige Codezeile zu schreiben.
+
+**Schritt 1 – App öffnen und Snapshot aufnehmen:**
+
+```bash
+playwright-cli open http://localhost:3000
+playwright-cli snapshot
+```
+
+Der Snapshot zeigt die aktuelle Seitenstruktur mit Element-`ref`-IDs. Diese `ref`-Werte werden in den nachfolgenden Befehlen als Ziel verwendet.
+
+**Schritt 2 – Eine Aufgabe hinzufügen:**
+
+```bash
+# Eingabefeld füllen (ref aus dem Snapshot, z. B. e12)
+playwright-cli fill e12 "CLI-Test-Aufgabe"
+
+# Geolocation wird benötigt – prüfe, ob ein Dialog erscheint
+playwright-cli snapshot
+
+# Add-Button klicken (ref des Buttons aus dem Snapshot)
+playwright-cli click e15
+playwright-cli snapshot
+```
+
+> 💡 **Tipp:** Nach jedem Befehl gibt `playwright-cli` automatisch einen neuen Snapshot aus. Die `ref`-Werte (`e12`, `e15` usw.) ändern sich nach DOM-Updates – lies immer den aktuellen Snapshot.
+
+**Schritt 3 – Filter testen:**
+
+```bash
+# "Active"-Filter klicken
+playwright-cli click e28   # ref des Active-Buttons aus dem Snapshot
+playwright-cli snapshot
+
+# "Completed"-Filter
+playwright-cli click e31   # ref des Completed-Buttons
+playwright-cli snapshot
+
+# Screenshot der aktuellen Ansicht
+playwright-cli screenshot --filename=filter-state.png
+```
+
+**Schritt 4 – Aufgabe bearbeiten und löschen:**
+
+```bash
+# "Edit"-Button der hinzugefügten Aufgabe klicken
+playwright-cli click e42
+
+# Inhalt des Eingabefelds ersetzen
+playwright-cli fill e45 "CLI-Test-Aufgabe (bearbeitet)"
+
+# "Save" klicken
+playwright-cli click e48
+
+# Snapshot zur Verifikation
+playwright-cli snapshot
+
+# Aufgabe löschen
+playwright-cli click e51   # "Delete"-Button
+playwright-cli snapshot
+```
+
+> 🔍 **Locator generieren:** Du kannst für jedes Element einen regulären Playwright-Locator-String erzeugen:
+> ```bash
+> playwright-cli generate-locator e12
+> # Ausgabe: locator('#new-todo-input')
+> ```
+> Das ist besonders nützlich, wenn du einen manuellen CLI-Workflow anschließend in einen echten Playwright-Test überführen möchtest.
+
+<details>
+<summary>💡 Lösungshinweis – Vollständiger Workflow</summary>
+
+```bash
+# Session starten
+playwright-cli open http://localhost:3000
+
+# Snapshot aufnehmen – refs merken
+playwright-cli snapshot
+
+# Aufgabe hinzufügen (refs ggf. anpassen)
+playwright-cli fill e12 "CLI-Test-Aufgabe"
+playwright-cli click e15
+
+# Prüfen
+playwright-cli snapshot
+
+# Filter testen
+playwright-cli click e28   # Active
+playwright-cli click e31   # Completed
+playwright-cli click e25   # All
+
+# Screenshot
+playwright-cli screenshot --filename=todo-cli-result.png
+
+# Browser schließen
+playwright-cli close
+```
+
+</details>
+
+> 🤔 **Stop & Think:** Welchen Vorteil hat `playwright-cli generate-locator` gegenüber manueller Locator-Suche im DevTools-Inspector? In welchem Schritt des Test-Entwicklungsprozesses würdest du es einsetzen?
+
+---
+
+### Teil B: Network-Mocking und Tracing per CLI
+
+**Aufgabe:** Nutze die CLI-eigenen Netzwerk- und Tracing-Features für Diagnose und Mocking.
+
+**Tracing starten, Workflow ausführen, Trace öffnen:**
+
+```bash
+# Tracing starten
+playwright-cli open http://localhost:3000
+playwright-cli tracing-start
+
+# Workflow ausführen (Aufgabe hinzufügen)
+playwright-cli fill e12 "Trace-Aufgabe"
+playwright-cli click e15
+playwright-cli snapshot
+
+# Tracing beenden und Datei speichern
+playwright-cli tracing-stop
+# → Trace-Datei im aktuellen Verzeichnis
+
+# Trace Viewer öffnen
+npx playwright show-trace trace.zip
+```
+
+**Network-Requests beobachten:**
+
+```bash
+playwright-cli open http://localhost:3000
+playwright-cli requests
+# Zeigt alle HTTP-Requests seit dem Laden der Seite
+
+# "Load remote tasks"-Button klicken
+playwright-cli click e99   # ref aus Snapshot
+playwright-cli requests
+# Neuer Request zu remoteTasks.json sollte erscheinen
+```
+
+**Network-Route mocken:**
+
+```bash
+# remoteTasks.json mit eigenem JSON abfangen und ersetzen
+playwright-cli route "**/remoteTasks.json" --body='[{"id":"mock-1","name":"Gemockte CLI-Aufgabe","completed":false}]' --content-type="application/json"
+
+# Button klicken – gemockter Response wird geliefert
+playwright-cli click e99
+playwright-cli snapshot
+```
+
+<details>
+<summary>💡 Lösungshinweis – Video-Aufnahme</summary>
+
+```bash
+# Video-Aufnahme starten
+playwright-cli open http://localhost:3000
+playwright-cli video-start workflow.webm
+playwright-cli video-chapter "Task hinzufügen"
+
+playwright-cli fill e12 "Video-Task"
+playwright-cli click e15
+
+playwright-cli video-chapter "Task löschen"
+playwright-cli click e51   # Delete
+
+# Video beenden – Datei workflow.webm wird gespeichert
+playwright-cli video-stop
+```
+
+</details>
+
+> 🤔 **Stop & Think:** Wann ist `playwright-cli route` dem `page.route()` in einem echten Playwright-Test vorzuziehen – und wann nicht? Denke an schnelle Ad-hoc-Tests vs. reproduzierbare Regressionstests.
+
+---
+
+### Teil C: playwright-cli als Coding-Agent-Skill
+
+**Ziel:** Den Workflow verstehen, mit dem ein KI-Coding-Agent `playwright-cli` nutzt – entweder mit installierten Skills oder in der skills-losen Variante.
+
+**Mit installierten Skills (Claude Code / GitHub Copilot Agent Mode):**
+
+```bash
+# Skills einmalig installieren
+playwright-cli install --skills
+
+# Danach im Coding-Agent:
+# "Teste den 'Add Todo'-Workflow auf http://localhost:3000 mit playwright-cli."
+```
+
+**Ohne installierte Skills (Skills-less):**
+
+Wenn keine Skills installiert sind, liest der Agent den Hilfetext selbst:
+
+```
+Teste den "Add Todo"-Workflow auf http://localhost:3000 mit playwright-cli.
+Prüfe playwright-cli --help für verfügbare Befehle.
+```
+
+**Mehrere Sessions parallel:**
+
+```bash
+# Session für TodoMatic
+playwright-cli -s=todo open http://localhost:3000
+
+# Andere Session für Vergleichsapp
+playwright-cli -s=demo open https://demo.playwright.dev/todomvc
+
+# Sessions anzeigen
+playwright-cli list
+
+# Dashboard öffnen – zeigt alle Sessions als Live-Screencasts
+playwright-cli show
+
+# Alle Sessions schließen
+playwright-cli close-all
+```
+
+> ℹ️ **C#-Entwickler:** `playwright-cli` ist ein Node.js-Tool und läuft unabhängig vom C#-Testprojekt. Du kannst es parallel zu deinen C#-Tests nutzen – z. B. für schnelle manuelle Verifikation, ohne den vollen `dotnet test`-Zyklus zu durchlaufen.
+
+<details>
+<summary>💡 Lösungshinweis – Locator aus CLI in C#-Test übernehmen</summary>
+
+```bash
+# CLI-Schritt: Locator generieren
+playwright-cli open http://localhost:3000
+playwright-cli snapshot
+playwright-cli generate-locator e12
+# → locator('#new-todo-input')
+```
+
+```csharp
+// Diesen Locator direkt in den C#-Test übernehmen:
+await Page.Locator("#new-todo-input").FillAsync("CLI-generierter Locator");
+```
+
+Der Workflow: CLI für Exploration → `generate-locator` für präzise Selektoren → C#-Test mit diesen Selektoren schreiben. Kein Raten, kein DevTools-Öffnen.
+
+</details>
+
+> 🤔 **Stop & Think:** Ein Coding-Agent kann `playwright-cli` eigenständig nutzen, ohne dass du jede Aktion vorgibst. Welche Risiken entstehen dabei, und wie kannst du sicherstellen, dass der Agent keine unerwünschten Seiteneffekte verursacht (z. B. Daten löschen)?
+
+---
+
+### Hilfreiche Links zu playwright-cli
+
+| Ressource | Link |
+|---|---|
+| GitHub-Repository | [github.com/microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) |
+| npm-Paket | [npmjs.com/@playwright/cli](https://www.npmjs.com/package/@playwright/cli) |
+| Playwright MCP Server (Vergleich) | [github.com/microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) |
+| Claude Code Integration | [docs.anthropic.com/claude-code](https://docs.anthropic.com/en/docs/claude-code) |
+
+---
+
 ## Zusammenfassung: Gelerntes auf einen Blick
 
 | Konzept | TypeScript API | C# API | Framework | Übung |
 |---|---|---|---|---|
-| Navigation | `page.goto()` | `Page.GotoAsync()` | alle | 1–14 |
+| Navigation | `page.goto()` | `Page.GotoAsync()` | alle | 1–15 |
 | ARIA-Locatoren | `getByRole()`, `getByTestId()` | `GetByRole()`, `GetByTestId()` | alle | 1, 3 |
 | Formular | `fill()`, `click()`, `check()` | `FillAsync()`, `ClickAsync()` | alle | 2, 3 |
 | Locator-Chaining | `.filter({ hasText })` | `.Filter(new() { HasText })` | alle | 3, 4 |
@@ -3515,6 +3826,7 @@ Screenshot der TodoMatic-App. Ist die App mobil nutzbar?
 | **Docker** | Dockerfile | Multi-Stage Dockerfile | alle | **12** |
 | **Azure PW Service** | `playwright.service.config.ts` | `PlaywrightServiceTest` (NUnit) | TS / NUnit | **13** |
 | **Playwright MCP Server** | `@playwright/mcp` + MCP-Config | *(Node.js-basiert, kein C# SDK)* | VS Code + Copilot | **14** |
+| **Playwright CLI** | `playwright-cli <cmd>` | *(Node.js-Tool, nutzbar neben C#)* | alle | **15** |
 
 ---
 
@@ -3723,6 +4035,14 @@ npx playwright show-report --port 9324
 | MCP-Protokoll Spezifikation | [modelcontextprotocol.io](https://modelcontextprotocol.io/) |
 | VS Code MCP-Server Konfiguration | [code.visualstudio.com – MCP Servers](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) |
 | GitHub Copilot Agent Mode | [docs.github.com – Agent Mode](https://docs.github.com/en/copilot/using-github-copilot/agents/using-github-copilot-agent-mode) |
+
+### 🖥️ Playwright CLI
+
+| Ressource | Link |
+|---|---|
+| `@playwright/cli` (npm) | [npmjs.com/@playwright/cli](https://www.npmjs.com/package/@playwright/cli) |
+| GitHub-Repository | [github.com/microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) |
+| Vergleich CLI vs. MCP | [github.com/microsoft/playwright-cli – README](https://github.com/microsoft/playwright-cli#playwright-cli-vs-playwright-mcp) |
 
 ### 🧪 Testing-Frameworks (.NET)
 
