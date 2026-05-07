@@ -367,179 +367,6 @@ function addTask(name: string) {
 
 ---
 
-## Teil 1: Debugging-Tools
-
-Bevor du mit den Übungen beginnst, lerne die wichtigsten Playwright-Debugging-Tools kennen – sie ersparen dir Stunden bei der Fehlersuche.
-
-### 🎬 Tool 1: Playwright Codegen (Test-Recorder)
-
-Codegen zeichnet deine Browser-Interaktionen auf und generiert automatisch Playwright-Testcode.
-
-<details open>
-<summary>🟦 TypeScript / JavaScript</summary>
-
-```bash
-# Codegen direkt starten
-npx playwright codegen http://localhost:3000
-
-# Oder in VS Code: Seitenleiste → Testing (Beaker) → "Record new" Button
-```
-
-</details>
-
-<details>
-<summary>🟣 C# / .NET</summary>
-
-```powershell
-# PowerShell – <net-version> = Ziel-Framework, z. B. net8.0, net9.0 oder net10.0
-pwsh bin/Debug/<net-version>/playwright.ps1 codegen http://localhost:3000
-```
-
-</details>
-
-**Was passiert:**
-- Ein Browser öffnet sich mit der App
-- Ein separates Fenster zeigt den generierten Code in Echtzeit
-- Klicke, tippe, navigiere – Codegen übersetzt alles in Test-Code
-- Kopiere den generierten Code als Startpunkt für deine Tests
-
-> **Übung:** Starte Codegen, füge eine neue Aufgabe hinzu, markiere sie als abgeschlossen, und lösche sie. Betrachte den generierten Code. Welche Locator-Strategien wählt Codegen automatisch?
-
----
-
-### 🔍 Tool 2: Playwright Inspector (PWDEBUG)
-
-Der Inspector erlaubt Step-by-Step-Debugging direkt im Browser.
-
-> **`PWDEBUG=1` vs. `PWDEBUG=console`:**
-> - `PWDEBUG=1` → öffnet den **Playwright Inspector** (visueller Debugger, Step-over, Locator-Picker) – das ist die hier beschriebene Variante.
-> - `PWDEBUG=console` → gibt verbose Playwright-API-Logs **nur in der Browser-Konsole** aus, ohne Inspector-Fenster.
-
-<details open>
-<summary>🟦 TypeScript / JavaScript</summary>
-
-```bash
-# Vor dem Test-Aufruf setzen
-PWDEBUG=1 npx playwright test smoke.spec.ts
-
-# Windows PowerShell:
-$env:PWDEBUG=1; npx playwright test smoke.spec.ts
-```
-
-```typescript
-// Alternativ im Code (hält den Test an):
-await page.pause(); // öffnet den Inspector an dieser Stelle
-```
-
-</details>
-
-<details>
-<summary>🟣 C# / .NET</summary>
-
-```bash
-# Umgebungsvariable setzen, dann normal testen
-$env:PWDEBUG=1; dotnet test --filter "SmokeTest"
-```
-
-```csharp
-// Alternativ im Code (hält den Test an):
-await Page.PauseAsync(); // öffnet den Inspector an dieser Stelle
-```
-
-</details>
-
-**Features des Inspectors:**
-- **Step over**: Test Schritt für Schritt ausführen
-- **Locator Explorer**: Locatoren direkt auf der Seite ausprobieren
-- **Pick locator**: Element anklicken → Inspector zeigt den besten Locator
-
----
-
-### 📊 Tool 3: Playwright Trace Viewer
-
-> **💡 Hinweis:** Den Trace Viewer kannst du erst sinnvoll nutzen, wenn du einen ersten Test und eine Trace-Datei erstellt hast. Eine vollständige Einführung mit Übungen findest du in **[Exercise 7, Teil C](#-teil-c-trace-viewer--vollständiger-zeitstrahl)**. Komm hierher zurück, sobald du deinen ersten Test geschrieben hast.
-
-Der Trace Viewer ist ein vollständiger Zeitstrahl des Tests – mit DOM-Snapshots, Netzwerk-Requests und Screenshots zu jedem Schritt.
-
-**Schnellstart (nach Exercise 1):**
-
-```bash
-# TypeScript – Trace beim Testlauf aufzeichnen und anzeigen:
-npx playwright test --trace on
-npx playwright show-trace test-results/pfad-zum-test/trace.zip
-
-# C# – Trace aktivieren:
-PLAYWRIGHT_TRACE=on dotnet test
-# pwsh bin/Debug/<net-version>/playwright.ps1 show-trace test-results/trace.zip
-```
-
-**In VS Code:** Nach einem fehlgeschlagenen Test erscheint in der Test-Ergebnis-Ansicht ein **"Show Trace"**-Link, der den Trace direkt in VS Code öffnet.
-
----
-
-### 🌐 Tool 4: Browser DevTools
-
-Playwright kann die Browser DevTools für Debugging-Sessions aktivieren.
-
-<details open>
-<summary>🟦 TypeScript / JavaScript</summary>
-
-```typescript
-// Browser im sichtbaren Modus + DevTools öffnen
-test.use({ headless: false, launchOptions: { devtools: true } });
-```
-
-</details>
-
-<details>
-<summary>🟣 C# / .NET</summary>
-
-```csharp
-// BrowserTypeLaunchOptions hat keine Devtools-Property in C# – Browser-Arg verwenden:
-public override BrowserTypeLaunchOptions LaunchOptions =>
-    new() { Headless = false, Args = new[] { "--auto-open-devtools-for-tabs" } };
-```
-
-</details>
-
-**Nützlich für:**
-- JavaScript-Fehler in der Konsole prüfen (`page.on('console', ...)`)
-- Netzwerk-Traffic live beobachten
-- CSS-Selektoren in der DevTools-Konsole ausprobieren: `$$('[data-testid]')`
-
----
-
-### 🖥️ Tool 5: Playwright UI Mode
-
-Der UI Mode (seit Playwright 1.32) ist das mächtigste lokale Debug-Werkzeug. Er öffnet eine eigene Oberfläche, in der du Tests verwalten, einzeln starten, in Echtzeit beobachten und direkt debuggen kannst.
-
-**Starten:**
-
-```bash
-npx playwright test --ui
-
-# Im package.json bereits vorkonfiguriert:
-npm run test:ui
-```
-
-**Features auf einen Blick:**
-
-| Feature | Beschreibung |
-|---|---|
-| **Test-Baum** | Alle Tests nach Dateien und Suites – per Klick einzeln starten |
-| **Watch-Mode** | Datei speichern → Test läuft sofort neu (Live-Feedback) |
-| **Timeline** | Visueller Zeitstrahl aller Aktionen, live während der Ausführung |
-| **DOM-Snapshot** | Klick auf jeden Schritt → exakter DOM-Zustand zu dem Zeitpunkt |
-| **Locator Picker** | Klick auf Element im Browser → UI Mode schlägt besten Locator vor |
-| **Netzwerk-Tab** | HTTP-Requests und Responses live sehen |
-| **Console** | Browser-Konsolenausgaben direkt eingebettet |
-
-> **💡 Empfehlung:** Nutze den UI Mode als primäres Werkzeug während der Entwicklung – er vereint Codegen, Inspector und Trace Viewer in einer Oberfläche.
-
-> **C# / .NET:** Der UI Mode ist aktuell nur für TypeScript/JavaScript verfügbar. Für C#-Tests bleibt `PWDEBUG=1` + Inspector der Standard-Workflow.
-
----
-
 ## Übersicht der App-Struktur (TodoMatic)
 
 | Element | Locator-Hinweis | Wichtiger Hinweis |
@@ -559,7 +386,7 @@ npm run test:ui
 
 ---
 
-## Teil 2: Code-Driven vs. Codegen – Zwei Wege zum Test
+## Teil 1: Code-Driven vs. Codegen – Zwei Wege zum Test
 
 Bevor du mit den Exercises beginnst, lerne die zwei grundlegenden Ansätze kennen, wie du einen Playwright-Test erstellen kannst:
 
@@ -1265,6 +1092,147 @@ public class FilterTests : TestBase
 </details>
 
 > 🤔 **Stop & Think:** Der Filter zeigt immer die aktuelle Liste – aber wie könnte dieser Test fehlschlagen, wenn ein anderer parallel laufender Test ebenfalls Aufgaben hinzufügt? Wie verhindert Playwright das bei `fullyParallel: true`?
+
+---
+
+## Debugging-Tools
+
+Du hast jetzt die ersten Tests geschrieben – der ideale Zeitpunkt, die wichtigsten Playwright-Debugging-Werkzeuge kennenzulernen. Sie helfen dir ab sofort bei der Fehlersuche in den nächsten Übungen.
+
+> **💡 Codegen** wurde bereits in [Teil 1: Code-Driven vs. Codegen](#-teil-1-code-driven-vs-codegen--zwei-wege-zum-test) eingeführt. Hier findest du die übrigen Werkzeuge.
+
+---
+
+### 🔍 Tool 1: Playwright Inspector (PWDEBUG)
+
+Der Inspector erlaubt Step-by-Step-Debugging direkt im Browser.
+
+> **`PWDEBUG=1` vs. `PWDEBUG=console`:**
+> - `PWDEBUG=1` → öffnet den **Playwright Inspector** (visueller Debugger, Step-over, Locator-Picker) – das ist die hier beschriebene Variante.
+> - `PWDEBUG=console` → gibt verbose Playwright-API-Logs **nur in der Browser-Konsole** aus, ohne Inspector-Fenster.
+
+<details open>
+<summary>🟦 TypeScript / JavaScript</summary>
+
+```bash
+# Vor dem Test-Aufruf setzen
+PWDEBUG=1 npx playwright test smoke.spec.ts
+
+# Windows PowerShell:
+$env:PWDEBUG=1; npx playwright test smoke.spec.ts
+```
+
+```typescript
+// Alternativ im Code (hält den Test an):
+await page.pause(); // öffnet den Inspector an dieser Stelle
+```
+
+</details>
+
+<details>
+<summary>🟣 C# / .NET</summary>
+
+```bash
+# Umgebungsvariable setzen, dann normal testen
+$env:PWDEBUG=1; dotnet test --filter "SmokeTest"
+```
+
+```csharp
+// Alternativ im Code (hält den Test an):
+await Page.PauseAsync(); // öffnet den Inspector an dieser Stelle
+```
+
+</details>
+
+**Features des Inspectors:**
+- **Step over**: Test Schritt für Schritt ausführen
+- **Locator Explorer**: Locatoren direkt auf der Seite ausprobieren
+- **Pick locator**: Element anklicken → Inspector zeigt den besten Locator
+
+---
+
+### 📊 Tool 2: Playwright Trace Viewer
+
+> **💡 Hinweis:** Den Trace Viewer kannst du erst sinnvoll nutzen, wenn du einen ersten Test und eine Trace-Datei erstellt hast. Eine vollständige Einführung mit Übungen findest du in **[Exercise 7, Teil C](#-teil-c-trace-viewer--vollständiger-zeitstrahl)**.
+
+Der Trace Viewer ist ein vollständiger Zeitstrahl des Tests – mit DOM-Snapshots, Netzwerk-Requests und Screenshots zu jedem Schritt.
+
+**Schnellstart:**
+
+```bash
+# TypeScript – Trace beim Testlauf aufzeichnen und anzeigen:
+npx playwright test --trace on
+npx playwright show-trace test-results/pfad-zum-test/trace.zip
+
+# C# – Trace aktivieren:
+PLAYWRIGHT_TRACE=on dotnet test
+# pwsh bin/Debug/<net-version>/playwright.ps1 show-trace test-results/trace.zip
+```
+
+**In VS Code:** Nach einem fehlgeschlagenen Test erscheint in der Test-Ergebnis-Ansicht ein **"Show Trace"**-Link, der den Trace direkt in VS Code öffnet.
+
+---
+
+### 🌐 Tool 3: Browser DevTools
+
+Playwright kann die Browser DevTools für Debugging-Sessions aktivieren.
+
+<details open>
+<summary>🟦 TypeScript / JavaScript</summary>
+
+```typescript
+// Browser im sichtbaren Modus + DevTools öffnen
+test.use({ headless: false, launchOptions: { devtools: true } });
+```
+
+</details>
+
+<details>
+<summary>🟣 C# / .NET</summary>
+
+```csharp
+// BrowserTypeLaunchOptions hat keine Devtools-Property in C# – Browser-Arg verwenden:
+public override BrowserTypeLaunchOptions LaunchOptions =>
+    new() { Headless = false, Args = new[] { "--auto-open-devtools-for-tabs" } };
+```
+
+</details>
+
+**Nützlich für:**
+- JavaScript-Fehler in der Konsole prüfen (`page.on('console', ...)`)
+- Netzwerk-Traffic live beobachten
+- CSS-Selektoren in der DevTools-Konsole ausprobieren: `$$('[data-testid]')`
+
+---
+
+### 🖥️ Tool 4: Playwright UI Mode
+
+Der UI Mode (seit Playwright 1.32) ist das mächtigste lokale Debug-Werkzeug. Er öffnet eine eigene Oberfläche, in der du Tests verwalten, einzeln starten, in Echtzeit beobachten und direkt debuggen kannst.
+
+**Starten:**
+
+```bash
+npx playwright test --ui
+
+# Im package.json bereits vorkonfiguriert:
+npm run test:ui
+```
+
+**Features auf einen Blick:**
+
+| Feature | Beschreibung |
+|---|---|
+| **Test-Baum** | Alle Tests nach Dateien und Suites – per Klick einzeln starten |
+| **Watch-Mode** | Datei speichern → Test läuft sofort neu (Live-Feedback) |
+| **Timeline** | Visueller Zeitstrahl aller Aktionen, live während der Ausführung |
+| **DOM-Snapshot** | Klick auf jeden Schritt → exakter DOM-Zustand zu dem Zeitpunkt |
+| **Locator Picker** | Klick auf Element im Browser → UI Mode schlägt besten Locator vor |
+| **Netzwerk-Tab** | HTTP-Requests und Responses live sehen |
+| **Console** | Browser-Konsolenausgaben direkt eingebettet |
+
+> **💡 Empfehlung:** Nutze den UI Mode als primäres Werkzeug während der Entwicklung – er vereint Codegen, Inspector und Trace Viewer in einer Oberfläche.
+
+> **C# / .NET:** Der UI Mode ist aktuell nur für TypeScript/JavaScript verfügbar. Für C#-Tests bleibt `PWDEBUG=1` + Inspector der Standard-Workflow.
 
 ---
 
@@ -3403,7 +3371,7 @@ dotnet test TodoPlaywrightTests/ --filter "TestCategory=CICD" \
 **Ziel:** Den offiziellen **Playwright MCP Server** (`@playwright/mcp`) einrichten und über **GitHub Copilot Agent Mode** in VS Code nutzen, um die TodoMatic-App zu erkunden, Locatoren zu entdecken und Testentwürfe zu generieren.
 
 > **Was ist der Playwright MCP Server?**  
-> Das [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) ist ein offener Standard, mit dem KI-Assistenten externe Tools (Browser, Datenbanken, APIs) steuern können. Der `@playwright/mcp`-Server stellt einem LLM (z. B. GitHub Copilot, Claude, ChatGPT) Playwright-Browser-Tools zur Verfügung – Navigieren, Klicken, Formulare ausfüllen, Screenshots aufnehmen, DOM abfragen – alles per natürlicher Sprache. Das **ergänzt** den code-driven Ansatz: du nutzt den MCP Server für Exploration und Entwurf, schreibst den finalen Test dann selbst von Hand (wie in Teil 2 empfohlen).
+> Das [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) ist ein offener Standard, mit dem KI-Assistenten externe Tools (Browser, Datenbanken, APIs) steuern können. Der `@playwright/mcp`-Server stellt einem LLM (z. B. GitHub Copilot, Claude, ChatGPT) Playwright-Browser-Tools zur Verfügung – Navigieren, Klicken, Formulare ausfüllen, Screenshots aufnehmen, DOM abfragen – alles per natürlicher Sprache. Das **ergänzt** den code-driven Ansatz: du nutzt den MCP Server für Exploration und Entwurf, schreibst den finalen Test dann selbst von Hand (wie in Teil 1 empfohlen).
 
 ---
 
@@ -3982,9 +3950,9 @@ Der Workflow: CLI für Exploration → `generate-locator` für präzise Selektor
 | Cross-Browser C# | – | `[DataRow]`/`[TestCase]`/`[InlineData]` | MSTest/NUnit/xUnit | 9 |
 | JS-Injektion | `page.evaluate()` | `Page.EvaluateAsync()` | alle | 10 |
 | **Page Object Model** | Klasse + Properties + Methoden | Klasse + Properties + Methoden | alle | **11** |
-| Codegen | `npx playwright codegen` | `pwsh playwright.ps1 codegen` | alle | Teil 2 |
-| Inspector | `PWDEBUG=1` / `page.pause()` | `PWDEBUG=1` / `PauseAsync()` | alle | Teil 1 |
-| **Code-Driven** | Von Hand schreiben | Von Hand schreiben | alle | **Teil 2** |
+| Codegen | `npx playwright codegen` | `pwsh playwright.ps1 codegen` | alle | Teil 1 |
+| Inspector | `PWDEBUG=1` / `page.pause()` | `PWDEBUG=1` / `PauseAsync()` | alle | Debugging-Tools |
+| **Code-Driven** | Von Hand schreiben | Von Hand schreiben | alle | **Teil 1** |
 | GitHub Actions | YAML | YAML | alle | 12 |
 | **Azure Pipelines** | YAML | YAML | alle | **12** |
 | **Docker** | Dockerfile | Multi-Stage Dockerfile | alle | **12** |
