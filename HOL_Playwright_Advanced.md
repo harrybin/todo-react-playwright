@@ -205,7 +205,7 @@ dotnet build
 dotnet tool install --global Microsoft.Playwright.CLI
 playwright install
 # Alternativ direkt über das generierte Skript (Pfad = Ziel-Framework, z. B. net8.0 bis net10.0):
-# pwsh bin/Debug/net8.0/playwright.ps1 install
+# pwsh bin/Debug/<net-version>/playwright.ps1 install
 ```
 
 **NUnit einrichten:**
