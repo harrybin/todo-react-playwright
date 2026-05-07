@@ -109,19 +109,26 @@ Nach der Installation erscheint in der Seitenleiste das **Beaker-Symbol** (Testi
 
 ## Teil 0B: Projekt-Setup
 
-<details open>
-<summary>🟦 TypeScript / JavaScript – Setup</summary>
+### Schritt 1 (für alle): App-Repo klonen und starten
 
-### Setup: TypeScript / JavaScript (VS Code)
+Unabhängig von der gewählten Sprache (TypeScript **oder** C#) wird die TodoMatic-App lokal benötigt:
 
 ```bash
-# App-Repo klonen und starten
 git clone https://github.com/harrybin/todo-react-playwright.git
 cd todo-react-playwright
 npm install
 npm run dev
 # App läuft auf http://localhost:3000
 ```
+
+> **C#-Nutzer:** Die App muss vor jedem Testlauf manuell gestartet sein – `dotnet test` startet sie nicht automatisch.
+
+---
+
+### Schritt 2: Playwright-Testprojekt einrichten
+
+<details open>
+<summary>🟦 TypeScript / JavaScript – Setup</summary>
 
 Playwright installieren:
 
@@ -194,11 +201,11 @@ Du kannst zwischen **MSTest**, **NUnit** und **xUnit** wählen. Alle drei werden
 dotnet new mstest -n TodoPlaywrightTests && cd TodoPlaywrightTests
 dotnet add package Microsoft.Playwright.MSTest
 dotnet build
-# Playwright-Browser installieren – Pfad hängt vom Build-Ordner ab:
-pwsh bin/Debug/net8.0/playwright.ps1 install   # .NET 8, Debug
-# pwsh bin/Debug/net9.0/playwright.ps1 install # .NET 9
-# Alternativ (framework-unabhängig):
-# dotnet tool install --global Microsoft.Playwright.CLI && playwright install
+# Playwright-Browser installieren (framework-unabhängig, empfohlen):
+dotnet tool install --global Microsoft.Playwright.CLI
+playwright install
+# Alternativ direkt über das generierte Skript (Pfad = Ziel-Framework, z. B. net8.0 bis net10.0):
+# pwsh bin/Debug/net8.0/playwright.ps1 install
 ```
 
 **NUnit einrichten:**
@@ -207,7 +214,9 @@ pwsh bin/Debug/net8.0/playwright.ps1 install   # .NET 8, Debug
 dotnet new nunit -n TodoPlaywrightTests && cd TodoPlaywrightTests
 dotnet add package Microsoft.Playwright.NUnit
 dotnet build
-pwsh bin/Debug/net8.0/playwright.ps1 install   # Pfad wie oben
+dotnet tool install --global Microsoft.Playwright.CLI
+playwright install
+# pwsh bin/Debug/<net-version>/playwright.ps1 install
 ```
 
 **xUnit einrichten:**
@@ -216,8 +225,12 @@ pwsh bin/Debug/net8.0/playwright.ps1 install   # Pfad wie oben
 dotnet new xunit -n TodoPlaywrightTests && cd TodoPlaywrightTests
 dotnet add package Microsoft.Playwright.Xunit
 dotnet build
-pwsh bin/Debug/net8.0/playwright.ps1 install   # Pfad wie oben
+dotnet tool install --global Microsoft.Playwright.CLI
+playwright install
+# pwsh bin/Debug/<net-version>/playwright.ps1 install
 ```
+
+> ℹ️ **`<net-version>`** ist das Ziel-Framework deines Projekts, z. B. `net8.0`, `net9.0` oder `net10.0` (Minimum: **.NET 8**). Den genauen Wert findest du in der `.csproj`-Datei (`<TargetFramework>`). Die framework-unabhängige `dotnet tool`-Variante ist einfacher und für alle Versionen gleich.
 
 **Gemeinsame Basisklasse** (`TestBase.cs`) – einmal definieren, von allen Testklassen erben:
 
@@ -310,8 +323,6 @@ HEADED=1 dotnet test                  # Sichtbarer Modus
 PLAYWRIGHT_TRACE=on dotnet test       # Trace immer aufzeichnen
 PLAYWRIGHT_BASE_URL=http://localhost:3000 dotnet test
 ```
-
-> **⚠️ Wichtig:** Starte die TodoMatic-App (`npm run dev`) **manuell**, bevor du C#-Tests ausführst. Im Gegensatz zu TypeScript gibt es für .NET kein eingebautes `webServer`-Äquivalent – die App muss separat gestartet werden.
 
 </details>
 
@@ -409,8 +420,8 @@ npx playwright codegen http://localhost:3000
 <summary>🟣 C# / .NET</summary>
 
 ```powershell
-# PowerShell
-pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000
+# PowerShell – <net-version> = Ziel-Framework, z. B. net8.0, net9.0 oder net10.0
+pwsh bin/Debug/<net-version>/playwright.ps1 codegen http://localhost:3000
 ```
 
 </details>
@@ -495,7 +506,8 @@ use: {
 <summary>🟣 C# / .NET</summary>
 
 ```powershell
-pwsh bin/Debug/net8.0/playwright.ps1 show-trace test-results/trace.zip
+# <net-version> = Ziel-Framework, z. B. net8.0, net9.0 oder net10.0
+pwsh bin/Debug/<net-version>/playwright.ps1 show-trace test-results/trace.zip
 ```
 
 ```csharp
@@ -636,8 +648,8 @@ Playwright zeichnet Interaktionen auf und generiert Code. Sinnvoll, um Locatoren
 # TypeScript
 npx playwright codegen http://localhost:3000
 
-# C# (.NET)
-pwsh bin/Debug/net8.0/playwright.ps1 codegen http://localhost:3000
+# C# (.NET) – <net-version> = Ziel-Framework, z. B. net8.0, net9.0 oder net10.0
+pwsh bin/Debug/<net-version>/playwright.ps1 codegen http://localhost:3000
 
 # VS Code: Testing-Seitenleiste → "Record new"-Button
 ```
@@ -1783,8 +1795,8 @@ public class TraceTests : TestBase
 ```
 
 ```powershell
-# Trace öffnen
-pwsh bin/Debug/net8.0/playwright.ps1 show-trace traces/add-task-trace.zip
+# Trace öffnen – <net-version> = Ziel-Framework, z. B. net8.0, net9.0 oder net10.0
+pwsh bin/Debug/<net-version>/playwright.ps1 show-trace traces/add-task-trace.zip
 ```
 
 **NUnit:**
@@ -2664,9 +2676,8 @@ jobs:
       # 5. .NET-Testprojekt bauen
       - run: dotnet build TodoPlaywrightTests/
 
-      # 6. Playwright-Browser installieren – Pfad hängt vom Build-Output-Ordner ab.
-      #    Alternativ: dotnet tool install -g Microsoft.Playwright.CLI && playwright install --with-deps
-      - run: pwsh TodoPlaywrightTests/bin/Debug/net8.0/playwright.ps1 install --with-deps
+      # 6. Playwright-Browser installieren (framework-unabhängig)
+      - run: dotnet tool install -g Microsoft.Playwright.CLI && playwright install --with-deps
 
       # 7. Tests ausführen – TRX-Format für PublishTestResults kompatibel
       - run: dotnet test TodoPlaywrightTests/ --logger trx --results-directory TestResults/
@@ -2804,9 +2815,8 @@ steps:
   - script: dotnet build TodoPlaywrightTests/
     displayName: Build test project
 
-  # 5. Playwright-Browser via PowerShell-Skript installieren
-  #    Das Skript wird durch dotnet build automatisch in bin/Debug/net8.0/ generiert
-  - script: pwsh TodoPlaywrightTests/bin/Debug/net8.0/playwright.ps1 install --with-deps
+  # 5. Playwright-Browser installieren (framework-unabhängig)
+  - script: dotnet tool install -g Microsoft.Playwright.CLI && playwright install --with-deps
     displayName: Install Playwright browsers
 
   # 6. Tests ausführen – TRX für PublishTestResults, Agent.TempDirectory für Berechtigungen
@@ -2945,6 +2955,7 @@ RUN dotnet build TodoPlaywrightTests/
 FROM mcr.microsoft.com/playwright/dotnet:v1.52.0-jammy AS test
 WORKDIR /app
 # Nur die kompilierten Test-Binaries aus Stage 1 übernehmen
+# Pfad anpassen, falls Ziel-Framework abweicht (z. B. net9.0 oder net10.0)
 COPY --from=build /app/TodoPlaywrightTests/bin/Debug/net8.0 .
 # host-gateway wird zur Laufzeit auf die Host-IP aufgelöst (via --add-host)
 ENV PLAYWRIGHT_BASE_URL=http://host-gateway:3000
@@ -3945,16 +3956,16 @@ npm run dev -- --port 3001
 
 ### 🔴 `playwright.ps1` nicht gefunden
 
-**Symptom:** `pwsh: cannot find 'bin/Debug/net8.0/playwright.ps1'`
+**Symptom:** `pwsh: cannot find 'bin/Debug/<net-version>/playwright.ps1'`
 
 **Ursachen und Lösungen:**
 - `dotnet build` wurde noch nicht ausgeführt → `dotnet build` ausführen
-- Falsches Target-Framework (z. B. net9.0 statt net8.0) → Pfad in der Konsole anpassen oder:
+- Falsches Target-Framework → Pfad an die in `.csproj` konfigurierte Version anpassen (z. B. `net8.0`, `net9.0`, `net10.0`):
 ```bash
 # Pfad automatisch finden (Linux/macOS):
 pwsh $(find . -name 'playwright.ps1' -not -path '*/obj/*' | head -1) install
 
-# Alternativ: Global Tool verwenden
+# Empfohlen: Global Tool verwenden (versionsneutral)
 dotnet tool install --global Microsoft.Playwright.CLI
 playwright install
 ```
