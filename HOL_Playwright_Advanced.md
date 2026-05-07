@@ -284,37 +284,6 @@ public class TestBase : PageTest
 }
 ```
 
-**`.runsettings` – Browser, Headless-Modus und Timeouts konfigurieren:**
-
-Erstelle `playwright.runsettings` im Projektstamm:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<RunSettings>
-  <TestRunParameters>
-    <!-- Browser: chromium | firefox | webkit -->
-    <Parameter name="playwright:browser" value="chromium" />
-    <Parameter name="playwright:headless" value="true" />
-    <!-- Timeout je Aktion in ms -->
-    <Parameter name="playwright:timeout" value="30000" />
-    <!-- Basis-URL der App -->
-    <Parameter name="playwright:baseUrl" value="http://localhost:3000" />
-    <!-- SlowMo für Debugging (ms zwischen Aktionen) -->
-    <!-- <Parameter name="playwright:slowMo" value="500" /> -->
-  </TestRunParameters>
-  <MSTest>
-    <Parallelize>
-      <Workers>4</Workers>
-      <Scope>ClassLevel</Scope>
-    </Parallelize>
-  </MSTest>
-</RunSettings>
-```
-
-```bash
-dotnet test --settings playwright.runsettings
-```
-
 **Wichtige Umgebungsvariablen:**
 
 ```bash
@@ -323,6 +292,8 @@ HEADED=1 dotnet test                  # Sichtbarer Modus
 PLAYWRIGHT_TRACE=on dotnet test       # Trace immer aufzeichnen
 PLAYWRIGHT_BASE_URL=http://localhost:3000 dotnet test
 ```
+
+> **⚙️ Fortgeschritten – `.runsettings`:** Für Parallelisierung, Timeouts und weitere Konfiguration per Datei siehe [Anhang: `.runsettings` Referenz](#-anhang-runsettings-für-c--net) am Ende des HOL.
 
 </details>
 
@@ -440,6 +411,10 @@ pwsh bin/Debug/<net-version>/playwright.ps1 codegen http://localhost:3000
 
 Der Inspector erlaubt Step-by-Step-Debugging direkt im Browser.
 
+> **`PWDEBUG=1` vs. `PWDEBUG=console`:**
+> - `PWDEBUG=1` → öffnet den **Playwright Inspector** (visueller Debugger, Step-over, Locator-Picker) – das ist die hier beschriebene Variante.
+> - `PWDEBUG=console` → gibt verbose Playwright-API-Logs **nur in der Browser-Konsole** aus, ohne Inspector-Fenster.
+
 <details open>
 <summary>🟦 TypeScript / JavaScript</summary>
 
@@ -482,41 +457,21 @@ await Page.PauseAsync(); // öffnet den Inspector an dieser Stelle
 
 ### 📊 Tool 3: Playwright Trace Viewer
 
+> **💡 Hinweis:** Den Trace Viewer kannst du erst sinnvoll nutzen, wenn du einen ersten Test und eine Trace-Datei erstellt hast. Eine vollständige Einführung mit Übungen findest du in **[Exercise 7, Teil C](#-teil-c-trace-viewer--vollständiger-zeitstrahl)**. Komm hierher zurück, sobald du deinen ersten Test geschrieben hast.
+
 Der Trace Viewer ist ein vollständiger Zeitstrahl des Tests – mit DOM-Snapshots, Netzwerk-Requests und Screenshots zu jedem Schritt.
 
-<details open>
-<summary>🟦 TypeScript / JavaScript</summary>
+**Schnellstart (nach Exercise 1):**
 
 ```bash
+# TypeScript – Trace beim Testlauf aufzeichnen und anzeigen:
+npx playwright test --trace on
 npx playwright show-trace test-results/pfad-zum-test/trace.zip
+
+# C# – Trace aktivieren:
+PLAYWRIGHT_TRACE=on dotnet test
+# pwsh bin/Debug/<net-version>/playwright.ps1 show-trace test-results/trace.zip
 ```
-
-```typescript
-// playwright.config.ts – Trace aktivieren:
-use: {
-  trace: "on",               // immer
-  // trace: "on-first-retry" // nur beim Retry (empfohlen für CI)
-  // trace: "retain-on-failure"
-}
-```
-
-</details>
-
-<details>
-<summary>🟣 C# / .NET</summary>
-
-```powershell
-# <net-version> = Ziel-Framework, z. B. net8.0, net9.0 oder net10.0
-pwsh bin/Debug/<net-version>/playwright.ps1 show-trace test-results/trace.zip
-```
-
-```csharp
-// Trace per Umgebungsvariable vor dem Test aktivieren:
-Environment.SetEnvironmentVariable("PLAYWRIGHT_TRACE", "on");
-// Oder manuell im Test (siehe Exercise 7)
-```
-
-</details>
 
 **In VS Code:** Nach einem fehlgeschlagenen Test erscheint in der Test-Ergebnis-Ansicht ein **"Show Trace"**-Link, der den Trace direkt in VS Code öffnet.
 
@@ -540,9 +495,9 @@ test.use({ headless: false, launchOptions: { devtools: true } });
 <summary>🟣 C# / .NET</summary>
 
 ```csharp
-// In playwright.config.json oder per LaunchOptions
+// BrowserTypeLaunchOptions hat keine Devtools-Property in C# – Browser-Arg verwenden:
 public override BrowserTypeLaunchOptions LaunchOptions =>
-    new() { Headless = false, Devtools = true };
+    new() { Headless = false, Args = new[] { "--auto-open-devtools-for-tabs" } };
 ```
 
 </details>
