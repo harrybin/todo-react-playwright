@@ -615,16 +615,234 @@ dotnet test --filter "FullyQualifiedName~SmokeTests"
 
 ---
 
-### ✨ Bonus-Test: Aufgabe anlegen, löschen und Zähler prüfen
+## Exercise 2: Geolocation mocken und Aufgabe hinzufügen
 
-**Ziel:** Einen vollständigen CRUD-Zyklus in einem einzigen Test abbilden – Aufgabe hinzufügen, Zähler vor und nach dem Löschen prüfen.
+**Ziel:** Browser-APIs mocken. Die App ruft `navigator.geolocation.getCurrentPosition` beim Hinzufügen auf – ohne Mock passiert nichts.
 
-> ⚠️ **Hinweis:** Dieser Test benötigt Geolocation (für den "Add"-Button). Die globale Konfiguration in `playwright.config.ts` / `TestBase.cs` stellt das bereits sicher.
+> 📚 **Docs:** [Emulation – Geolocation (TS)](https://playwright.dev/docs/emulation#geolocation) · [Emulation – Geolocation (.NET)](https://playwright.dev/dotnet/docs/emulation#geolocation) · [Permissions](https://playwright.dev/docs/emulation#permissions) · [test.use() / Fixtures](https://playwright.dev/docs/test-fixtures)
+
+**Aufgabe:**
+
+Schreibe einen Test, der:
+1. Geolocation auf München (Lat 48.1372, Lon 11.5755) mockt
+2. Eine Aufgabe "Playwright lernen" hinzufügt
+3. Prüft, dass die Aufgabe in der Liste erscheint
+4. Prüft, dass der Zähler um 1 gestiegen ist
+
+> **🔍 Debug-Tipp:** Nutze `await page.pause()` / `await Page.PauseAsync()` direkt nach dem Klick auf "Add", um im Inspector zu beobachten, ob die Aufgabe erscheint oder ob die Geolocation blockiert.
 
 <details>
 <summary>💡 Lösungshinweis TypeScript</summary>
 
-Füge in `tests/smoke.spec.ts` hinzu:
+> ℹ️ **Globale Konfiguration:** Die `playwright.config.ts` dieser HOL enthält bereits `geolocation` und `permissions` global in `use:`. Der `test.use()`-Block hier zeigt, wie man es **pro Datei** überschreibt – z. B. für einen anderen Ort. In späteren Exercises entfällt er.
+
+```typescript
+import { test, expect } from "@playwright/test";
+
+// Beispiel: Geolocation per-Datei auf einen anderen Ort überschreiben
+// (In dieser HOL nicht nötig – globale Config reicht aus)
+test.use({
+  geolocation: { latitude: 48.1372, longitude: 11.5755 },
+  permissions: ["geolocation"],
+});
+
+test("add a new task", async ({ page }) => {
+  await page.goto("/");
+
+  const headingText = await page.locator("#list-heading").textContent();
+  const initialCount = parseInt(headingText?.match(/\d+/)?.[0] ?? "0");
+
+  await page.locator("#new-todo-input").fill("Playwright lernen");
+  await page.locator("#myUniqueID").click();
+
+  await expect(
+    page.getByRole("list").getByText("Playwright lernen")
+  ).toBeVisible();
+
+  await expect(page.locator("#list-heading")).toContainText(
+    `${initialCount + 1}`
+  );
+});
+```
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C#</summary>
+
+> ℹ️ **Globale Konfiguration:** Die `TestBase`-Klasse setzt `Geolocation` und `Permissions` bereits. Alle Testklassen, die `TestBase` statt `PageTest` erweitern, erben diese Konfiguration – kein `ContextOptions()`-Override nötig.
+
+```csharp
+// TestBase erbt bereits Geolocation + BaseURL – kein Override nötig
+[TestClass]
+public class AddTaskTests : TestBase
+{
+    [TestMethod]
+    public async Task AddNewTask()
+    {
+        await Page.GotoAsync("/");
+
+        var headingText = await Page.Locator("#list-heading").TextContentAsync();
+        var initialCount = int.Parse(Regex.Match(headingText ?? "0", @"\d+").Value);
+
+        await Page.Locator("#new-todo-input").FillAsync("Playwright lernen");
+        await Page.Locator("#myUniqueID").ClickAsync();
+
+        await Expect(
+            Page.GetByRole(AriaRole.List).GetByText("Playwright lernen")
+        ).ToBeVisibleAsync();
+
+        await Expect(Page.Locator("#list-heading"))
+            .ToContainTextAsync($"{initialCount + 1}");
+    }
+}
+```
+
+**Warum Geolocation mocken?**  
+Ohne Grant hängt der Callback und die Aufgabe wird nie gespeichert. Dieses Pattern ist in allen echten Apps relevant, die Location-APIs nutzen – z. B. Store-Finder oder Delivery-Tracking.
+
+</details>
+
+> 🤔 **Stop & Think:** Was würde ohne Geolocation-Mock passieren? Würde der Test sofort fehlschlagen oder nach einem Timeout – und welches Timeout würde greifen?
+
+---
+
+## Exercise 3: Aufgabe bearbeiten, löschen und Zähler prüfen
+
+**Ziel:** Interaktion mit dynamisch gerenderten, voneinander unabhängigen Listenelementen. Der Schlüssel ist präzises Locator-Chaining.
+
+**Aufgabe:**
+
+**Test A – Bearbeiten:**
+1. Aufgabe "Alte Bezeichnung" hinzufügen
+2. Auf deren "Edit"-Button klicken
+3. Neuen Namen "Neue Bezeichnung" eingeben und speichern
+4. Prüfen: "Neue Bezeichnung" sichtbar, "Alte Bezeichnung" weg
+
+**Test B – Löschen:**
+1. Aufgabe "Zu löschende Aufgabe" hinzufügen
+2. "Delete" klicken
+3. Prüfen: Aufgabe nicht mehr vorhanden
+
+**Test C – Zähler prüfen (CRUD-Zyklus):**
+1. Ausgangszustand: Zähler zeigt "1 task remaining"
+2. Neue Aufgabe hinzufügen → Zähler zeigt "2 tasks remaining"
+3. Aufgabe löschen → Zähler zeigt wieder "1 task remaining"
+
+> **🎬 Codegen-Tipp:** Zeichne die Edit-Sequenz mit Codegen auf. Schau dir an, welchen Locator Codegen für den "Edit"-Button erzeugt – Playwright erkennt den Kontext automatisch.
+
+<details>
+<summary>💡 Lösungshinweis TypeScript</summary>
+
+```typescript
+import { test, expect } from "@playwright/test";
+
+// Kein test.use() nötig – Geolocation ist global in playwright.config.ts konfiguriert
+
+async function addTask(page: import("@playwright/test").Page, name: string) {
+  await page.locator("#new-todo-input").fill(name);
+  await page.locator("#myUniqueID").click();
+  await expect(page.getByRole("list").getByText(name)).toBeVisible();
+}
+
+test("edit a task", async ({ page }) => {
+  await page.goto("/");
+  await addTask(page, "Alte Bezeichnung");
+
+  // Gezielt den Edit-Button im richtigen ListItem finden
+  const taskItem = page
+    .getByRole("listitem")
+    .filter({ hasText: "Alte Bezeichnung" });
+  await taskItem.getByRole("button", { name: "Edit" }).click();
+
+  await taskItem.getByRole("textbox").fill("Neue Bezeichnung");
+  await taskItem.getByRole("button", { name: "Save" }).click();
+
+  await expect(page.getByRole("list").getByText("Neue Bezeichnung")).toBeVisible();
+  await expect(page.getByRole("list").getByText("Alte Bezeichnung")).not.toBeVisible();
+});
+
+test("delete a task", async ({ page }) => {
+  await page.goto("/");
+  await addTask(page, "Zu löschende Aufgabe");
+
+  const taskItem = page
+    .getByRole("listitem")
+    .filter({ hasText: "Zu löschende Aufgabe" });
+  await taskItem.getByRole("button", { name: "Delete" }).click();
+
+  await expect(
+    page.getByRole("list").getByText("Zu löschende Aufgabe")
+  ).not.toBeVisible();
+});
+```
+
+</details>
+
+<details>
+<summary>💡 Lösungshinweis C#</summary>
+
+```csharp
+// TestBase erbt Geolocation + BaseURL – kein ContextOptions()-Override nötig
+[TestClass]
+public class TaskManagementTests : TestBase
+{
+    private async Task AddTaskAsync(string name)
+    {
+        await Page.Locator("#new-todo-input").FillAsync(name);
+        await Page.Locator("#myUniqueID").ClickAsync();
+        await Expect(Page.GetByRole(AriaRole.List).GetByText(name)).ToBeVisibleAsync();
+    }
+
+    [TestMethod]
+    public async Task EditTask()
+    {
+        await Page.GotoAsync("/");
+        await AddTaskAsync("Alte Bezeichnung");
+
+        // Locator-Chaining: ListItem filtern, dann Edit-Button darin finden
+        var taskItem = Page.GetByRole(AriaRole.Listitem)
+            .Filter(new() { HasText = "Alte Bezeichnung" });
+        await taskItem.GetByRole(AriaRole.Button, new() { Name = "Edit" }).ClickAsync();
+
+        await taskItem.GetByRole(AriaRole.Textbox).FillAsync("Neue Bezeichnung");
+        await taskItem.GetByRole(AriaRole.Button, new() { Name = "Save" }).ClickAsync();
+
+        await Expect(Page.GetByRole(AriaRole.List).GetByText("Neue Bezeichnung"))
+            .ToBeVisibleAsync();
+        await Expect(Page.GetByRole(AriaRole.List).GetByText("Alte Bezeichnung"))
+            .Not.ToBeVisibleAsync();
+    }
+
+    [TestMethod]
+    public async Task DeleteTask()
+    {
+        await Page.GotoAsync("/");
+        await AddTaskAsync("Zu löschende Aufgabe");
+
+        var taskItem = Page.GetByRole(AriaRole.Listitem)
+            .Filter(new() { HasText = "Zu löschende Aufgabe" });
+        await taskItem.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+
+        await Expect(Page.GetByRole(AriaRole.List).GetByText("Zu löschende Aufgabe"))
+            .Not.ToBeVisibleAsync();
+    }
+}
+```
+
+**Schlüsselkonzept – `.Filter()` / `.filter()`:**  
+Schränkt einen breiten Locator auf Elemente ein, die bestimmten Text enthalten. Das C#-Äquivalent ist `.Filter(new() { HasText = "..." })` – exakt das Muster aus den [PlaywrightDemos DDC 2024](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_DDC2024.cs).
+
+</details>
+
+> 🤔 **Stop & Think:** Warum ist `.filter({ hasText })` / `.Filter(new() { HasText })` besser als einfach `getByText("Edit").click()`? Was passiert, wenn zwei Aufgaben gleichzeitig in der Liste sind?
+
+---
+
+**Test C – Lösungshinweise:**
+
+<details>
+<summary>💡 Lösungshinweis TypeScript</summary>
 
 ```typescript
 test("add task and delete it – check count", async ({ page }) => {
@@ -747,225 +965,6 @@ public async Task AddAndDeleteTask_CheckCount()
 </details>
 
 > 🤔 **Stop & Think:** Warum wird der Delete-Button über `.filter({ hasText: "Smoke Bonus Task" })` angesteuert und nicht direkt per `getByRole("button", { name: "Delete" })`? Was würde passieren, wenn mehrere Aufgaben in der Liste stehen?
-
----
-
-## Exercise 2: Geolocation mocken und Aufgabe hinzufügen
-
-**Ziel:** Browser-APIs mocken. Die App ruft `navigator.geolocation.getCurrentPosition` beim Hinzufügen auf – ohne Mock passiert nichts.
-
-> 📚 **Docs:** [Emulation – Geolocation (TS)](https://playwright.dev/docs/emulation#geolocation) · [Emulation – Geolocation (.NET)](https://playwright.dev/dotnet/docs/emulation#geolocation) · [Permissions](https://playwright.dev/docs/emulation#permissions) · [test.use() / Fixtures](https://playwright.dev/docs/test-fixtures)
-
-**Aufgabe:**
-
-Schreibe einen Test, der:
-1. Geolocation auf München (Lat 48.1372, Lon 11.5755) mockt
-2. Eine Aufgabe "Playwright lernen" hinzufügt
-3. Prüft, dass die Aufgabe in der Liste erscheint
-4. Prüft, dass der Zähler um 1 gestiegen ist
-
-> **🔍 Debug-Tipp:** Nutze `await page.pause()` / `await Page.PauseAsync()` direkt nach dem Klick auf "Add", um im Inspector zu beobachten, ob die Aufgabe erscheint oder ob die Geolocation blockiert.
-
-<details>
-<summary>💡 Lösungshinweis TypeScript</summary>
-
-> ℹ️ **Globale Konfiguration:** Die `playwright.config.ts` dieser HOL enthält bereits `geolocation` und `permissions` global in `use:`. Der `test.use()`-Block hier zeigt, wie man es **pro Datei** überschreibt – z. B. für einen anderen Ort. In späteren Exercises entfällt er.
-
-```typescript
-import { test, expect } from "@playwright/test";
-
-// Beispiel: Geolocation per-Datei auf einen anderen Ort überschreiben
-// (In dieser HOL nicht nötig – globale Config reicht aus)
-test.use({
-  geolocation: { latitude: 48.1372, longitude: 11.5755 },
-  permissions: ["geolocation"],
-});
-
-test("add a new task", async ({ page }) => {
-  await page.goto("/");
-
-  const headingText = await page.locator("#list-heading").textContent();
-  const initialCount = parseInt(headingText?.match(/\d+/)?.[0] ?? "0");
-
-  await page.locator("#new-todo-input").fill("Playwright lernen");
-  await page.locator("#myUniqueID").click();
-
-  await expect(
-    page.getByRole("list").getByText("Playwright lernen")
-  ).toBeVisible();
-
-  await expect(page.locator("#list-heading")).toContainText(
-    `${initialCount + 1}`
-  );
-});
-```
-
-</details>
-
-<details>
-<summary>💡 Lösungshinweis C#</summary>
-
-> ℹ️ **Globale Konfiguration:** Die `TestBase`-Klasse setzt `Geolocation` und `Permissions` bereits. Alle Testklassen, die `TestBase` statt `PageTest` erweitern, erben diese Konfiguration – kein `ContextOptions()`-Override nötig.
-
-```csharp
-// TestBase erbt bereits Geolocation + BaseURL – kein Override nötig
-[TestClass]
-public class AddTaskTests : TestBase
-{
-    [TestMethod]
-    public async Task AddNewTask()
-    {
-        await Page.GotoAsync("/");
-
-        var headingText = await Page.Locator("#list-heading").TextContentAsync();
-        var initialCount = int.Parse(Regex.Match(headingText ?? "0", @"\d+").Value);
-
-        await Page.Locator("#new-todo-input").FillAsync("Playwright lernen");
-        await Page.Locator("#myUniqueID").ClickAsync();
-
-        await Expect(
-            Page.GetByRole(AriaRole.List).GetByText("Playwright lernen")
-        ).ToBeVisibleAsync();
-
-        await Expect(Page.Locator("#list-heading"))
-            .ToContainTextAsync($"{initialCount + 1}");
-    }
-}
-```
-
-**Warum Geolocation mocken?**  
-Ohne Grant hängt der Callback und die Aufgabe wird nie gespeichert. Dieses Pattern ist in allen echten Apps relevant, die Location-APIs nutzen – z. B. Store-Finder oder Delivery-Tracking.
-
-</details>
-
-> 🤔 **Stop & Think:** Was würde ohne Geolocation-Mock passieren? Würde der Test sofort fehlschlagen oder nach einem Timeout – und welches Timeout würde greifen?
-
----
-
-## Exercise 3: Aufgabe bearbeiten und löschen
-
-**Ziel:** Interaktion mit dynamisch gerenderten, voneinander unabhängigen Listenelementen. Der Schlüssel ist präzises Locator-Chaining.
-
-**Aufgabe:**
-
-**Test A – Bearbeiten:**
-1. Aufgabe "Alte Bezeichnung" hinzufügen
-2. Auf deren "Edit"-Button klicken
-3. Neuen Namen "Neue Bezeichnung" eingeben und speichern
-4. Prüfen: "Neue Bezeichnung" sichtbar, "Alte Bezeichnung" weg
-
-**Test B – Löschen:**
-1. Aufgabe "Zu löschende Aufgabe" hinzufügen
-2. "Delete" klicken
-3. Prüfen: Aufgabe nicht mehr vorhanden
-
-> **🎬 Codegen-Tipp:** Zeichne die Edit-Sequenz mit Codegen auf. Schau dir an, welchen Locator Codegen für den "Edit"-Button erzeugt – Playwright erkennt den Kontext automatisch.
-
-<details>
-<summary>💡 Lösungshinweis TypeScript</summary>
-
-```typescript
-import { test, expect } from "@playwright/test";
-
-// Kein test.use() nötig – Geolocation ist global in playwright.config.ts konfiguriert
-
-async function addTask(page: import("@playwright/test").Page, name: string) {
-  await page.locator("#new-todo-input").fill(name);
-  await page.locator("#myUniqueID").click();
-  await expect(page.getByRole("list").getByText(name)).toBeVisible();
-}
-
-test("edit a task", async ({ page }) => {
-  await page.goto("/");
-  await addTask(page, "Alte Bezeichnung");
-
-  // Gezielt den Edit-Button im richtigen ListItem finden
-  const taskItem = page
-    .getByRole("listitem")
-    .filter({ hasText: "Alte Bezeichnung" });
-  await taskItem.getByRole("button", { name: "Edit" }).click();
-
-  await taskItem.getByRole("textbox").fill("Neue Bezeichnung");
-  await taskItem.getByRole("button", { name: "Save" }).click();
-
-  await expect(page.getByRole("list").getByText("Neue Bezeichnung")).toBeVisible();
-  await expect(page.getByRole("list").getByText("Alte Bezeichnung")).not.toBeVisible();
-});
-
-test("delete a task", async ({ page }) => {
-  await page.goto("/");
-  await addTask(page, "Zu löschende Aufgabe");
-
-  const taskItem = page
-    .getByRole("listitem")
-    .filter({ hasText: "Zu löschende Aufgabe" });
-  await taskItem.getByRole("button", { name: "Delete" }).click();
-
-  await expect(
-    page.getByRole("list").getByText("Zu löschende Aufgabe")
-  ).not.toBeVisible();
-});
-```
-
-</details>
-
-<details>
-<summary>💡 Lösungshinweis C#</summary>
-
-```csharp
-// TestBase erbt Geolocation + BaseURL – kein ContextOptions()-Override nötig
-[TestClass]
-public class TaskManagementTests : TestBase
-{
-    private async Task AddTaskAsync(string name)
-    {
-        await Page.Locator("#new-todo-input").FillAsync(name);
-        await Page.Locator("#myUniqueID").ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.List).GetByText(name)).ToBeVisibleAsync();
-    }
-
-    [TestMethod]
-    public async Task EditTask()
-    {
-        await Page.GotoAsync("/");
-        await AddTaskAsync("Alte Bezeichnung");
-
-        // Locator-Chaining: ListItem filtern, dann Edit-Button darin finden
-        var taskItem = Page.GetByRole(AriaRole.Listitem)
-            .Filter(new() { HasText = "Alte Bezeichnung" });
-        await taskItem.GetByRole(AriaRole.Button, new() { Name = "Edit" }).ClickAsync();
-
-        await taskItem.GetByRole(AriaRole.Textbox).FillAsync("Neue Bezeichnung");
-        await taskItem.GetByRole(AriaRole.Button, new() { Name = "Save" }).ClickAsync();
-
-        await Expect(Page.GetByRole(AriaRole.List).GetByText("Neue Bezeichnung"))
-            .ToBeVisibleAsync();
-        await Expect(Page.GetByRole(AriaRole.List).GetByText("Alte Bezeichnung"))
-            .Not.ToBeVisibleAsync();
-    }
-
-    [TestMethod]
-    public async Task DeleteTask()
-    {
-        await Page.GotoAsync("/");
-        await AddTaskAsync("Zu löschende Aufgabe");
-
-        var taskItem = Page.GetByRole(AriaRole.Listitem)
-            .Filter(new() { HasText = "Zu löschende Aufgabe" });
-        await taskItem.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
-
-        await Expect(Page.GetByRole(AriaRole.List).GetByText("Zu löschende Aufgabe"))
-            .Not.ToBeVisibleAsync();
-    }
-}
-```
-
-**Schlüsselkonzept – `.Filter()` / `.filter()`:**  
-Schränkt einen breiten Locator auf Elemente ein, die bestimmten Text enthalten. Das C#-Äquivalent ist `.Filter(new() { HasText = "..." })` – exakt das Muster aus den [PlaywrightDemos DDC 2024](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_DDC2024.cs).
-
-</details>
-
-> 🤔 **Stop & Think:** Warum ist `.filter({ hasText })` / `.Filter(new() { HasText })` besser als einfach `getByText("Edit").click()`? Was passiert, wenn zwei Aufgaben gleichzeitig in der Liste sind?
 
 ---
 
@@ -1095,7 +1094,7 @@ public class FilterTests : TestBase
 
 ---
 
-## Debugging-Tools
+## Teil 2: Debugging-Tools
 
 Du hast jetzt die ersten Tests geschrieben – der ideale Zeitpunkt, die wichtigsten Playwright-Debugging-Werkzeuge kennenzulernen. Sie helfen dir ab sofort bei der Fehlersuche in den nächsten Übungen.
 
@@ -3951,7 +3950,7 @@ Der Workflow: CLI für Exploration → `generate-locator` für präzise Selektor
 | JS-Injektion | `page.evaluate()` | `Page.EvaluateAsync()` | alle | 10 |
 | **Page Object Model** | Klasse + Properties + Methoden | Klasse + Properties + Methoden | alle | **11** |
 | Codegen | `npx playwright codegen` | `pwsh playwright.ps1 codegen` | alle | Teil 1 |
-| Inspector | `PWDEBUG=1` / `page.pause()` | `PWDEBUG=1` / `PauseAsync()` | alle | Debugging-Tools |
+| Inspector | `PWDEBUG=1` / `page.pause()` | `PWDEBUG=1` / `PauseAsync()` | alle | Teil 2 |
 | **Code-Driven** | Von Hand schreiben | Von Hand schreiben | alle | **Teil 1** |
 | GitHub Actions | YAML | YAML | alle | 12 |
 | **Azure Pipelines** | YAML | YAML | alle | **12** |
