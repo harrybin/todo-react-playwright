@@ -42,7 +42,7 @@ function App(props: { tasks: Task[] }) {
       if (task.id === itask.id) {
         return { ...itask, completed: !itask.completed };
       }
-      return task;
+      return itask;
     });
     setTasks(updatedTasks);
   }
@@ -57,7 +57,7 @@ function App(props: { tasks: Task[] }) {
       if (task.id === itask.id) {
         return { ...itask, name: task.name } as Task;
       }
-      return task as Task;
+      return itask as Task;
     });
     setTasks(editedTaskList);
   }

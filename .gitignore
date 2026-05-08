@@ -25,3 +25,6 @@ dist-ssr
 playwright-report/
 test-results/
 
+# .NET build outputs
+TodoPlaywrightTests/bin/
+TodoPlaywrightTests/obj/
