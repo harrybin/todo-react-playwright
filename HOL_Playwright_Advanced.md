@@ -153,7 +153,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
     // Geolocation global – die App benötigt sie für addTask().
     // Tests ohne addTask() werden durch das Grant nicht beeinträchtigt.
-    geolocation: { latitude: 48.1372, longitude: 11.5755 },
+    geolocation: { latitude: 52.1205, longitude: 11.6276 },
     permissions: ["geolocation"],
   },
   projects: [
@@ -247,7 +247,7 @@ public class TestBase : PageTest
         BaseURL = Environment.GetEnvironmentVariable("PLAYWRIGHT_BASE_URL")
                   ?? "http://localhost:3000",
         // Geolocation global – benötigt von addTask() in allen Tests
-        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
+        Geolocation = new Geolocation { Latitude = 52.1205f, Longitude = 11.6276f },
         Permissions = new[] { "geolocation" },
     };
 }
@@ -263,7 +263,7 @@ public class TestBase : PageTest
     {
         BaseURL = Environment.GetEnvironmentVariable("PLAYWRIGHT_BASE_URL")
                   ?? "http://localhost:3000",
-        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
+        Geolocation = new Geolocation { Latitude = 52.1205f, Longitude = 11.6276f },
         Permissions = new[] { "geolocation" },
     };
 }
@@ -278,7 +278,7 @@ public class TestBase : PageTest
     {
         BaseURL = Environment.GetEnvironmentVariable("PLAYWRIGHT_BASE_URL")
                   ?? "http://localhost:3000",
-        Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
+        Geolocation = new Geolocation { Latitude = 52.1205f, Longitude = 11.6276f },
         Permissions = new[] { "geolocation" },
     };
 }
@@ -624,7 +624,7 @@ dotnet test --filter "FullyQualifiedName~SmokeTests"
 **Aufgabe:**
 
 Schreibe einen Test, der:
-1. Geolocation auf München (Lat 48.1372, Lon 11.5755) mockt
+1. Geolocation auf Magdeburg (Lat 52.1205, Lon 11.6276) mockt
 2. Eine Aufgabe "Playwright lernen" hinzufügt
 3. Prüft, dass die Aufgabe in der Liste erscheint
 4. Prüft, dass der Zähler um 1 gestiegen ist
@@ -642,7 +642,7 @@ import { test, expect } from "@playwright/test";
 // Beispiel: Geolocation per-Datei auf einen anderen Ort überschreiben
 // (In dieser HOL nicht nötig – globale Config reicht aus)
 test.use({
-  geolocation: { latitude: 48.1372, longitude: 11.5755 },
+  geolocation: { latitude: 52.1205, longitude: 11.6276 },
   permissions: ["geolocation"],
 });
 
@@ -2929,7 +2929,7 @@ Docker garantiert reproduzierbare, isolierte Testläufe unabhängig vom Host-Sys
 
 | Konzept | Erklärung |
 |---|---|
-| `FROM mcr.microsoft.com/playwright:vX.Y.Z-jammy` | Offizielles Microsoft-Image mit Ubuntu Jammy (22.04) und Playwright vorinstalliert. Version immer pinnen (z. B. `v1.52.0`) – nie `latest` in Produktion! |
+| `FROM mcr.microsoft.com/playwright:vX.Y.Z-noble` | Offizielles Microsoft-Image mit Ubuntu Noble (24.04) und Playwright vorinstalliert. Version immer pinnen (z. B. `v1.59.1`) – nie `latest` in Produktion! |
 | `.dockerignore` | Verhindert, dass `node_modules`, `.git` und Reports in den Build-Context kopiert werden → deutlich schnellere Image-Builds |
 | `-v $(pwd)/playwright-report:/app/playwright-report` | Volume-Mount: Artefakte aus dem Container auf den Host-Dateisystem mappen – sonst sind sie nach `docker run --rm` weg |
 | Multi-Stage Build | Stage 1 (SDK) baut die App / Tests; Stage 2 (Runtime) ist schlanker – kein Build-Toolchain im finalen Image |
@@ -2943,8 +2943,8 @@ Docker garantiert reproduzierbare, isolierte Testläufe unabhängig vom Host-Sys
 
 ```dockerfile
 # Offizielles Playwright-Image – alle Browser vorinstalliert, keine weitere Installation nötig
-# Version pinnen für Reproduzierbarkeit; "jammy" = Ubuntu 22.04 LTS
-FROM mcr.microsoft.com/playwright:v1.52.0-jammy
+# Version pinnen für Reproduzierbarkeit; "noble" = Ubuntu 24.04 LTS
+FROM mcr.microsoft.com/playwright:v1.59.1-noble
 
 WORKDIR /app
 
@@ -3009,7 +3009,7 @@ RUN dotnet build TodoPlaywrightTests/
 # ── Stage 2: Test-Ausführung ────────────────────────────────────────────────
 # Schlankes Playwright-Runtime-Image (Browser + Systemabhängigkeiten enthalten)
 # Das dotnet/sdk-Image von Stage 1 ist NICHT im finalen Image enthalten → kleineres Image
-FROM mcr.microsoft.com/playwright/dotnet:v1.52.0-jammy AS test
+FROM mcr.microsoft.com/playwright/dotnet:v1.59.1-noble AS test
 WORKDIR /app
 # Nur die kompilierten Test-Binaries aus Stage 1 übernehmen
 # Pfad anpassen, falls Ziel-Framework abweicht (z. B. net9.0 oder net10.0)
@@ -3977,7 +3977,7 @@ Hier sind die häufigsten Stolpersteine beim Arbeiten mit dieser HOL:
 ```typescript
 // In playwright.config.ts (global – einmalig für alle Tests):
 use: {
-  geolocation: { latitude: 48.1372, longitude: 11.5755 },
+  geolocation: { latitude: 52.1205, longitude: 11.6276 },
   permissions: ["geolocation"],
 }
 ```
@@ -3985,7 +3985,7 @@ use: {
 **Lösung C#:**
 ```csharp
 // In TestBase.ContextOptions():
-Geolocation = new Geolocation { Latitude = 48.1372f, Longitude = 11.5755f },
+Geolocation = new Geolocation { Latitude = 52.1205f, Longitude = 11.6276f },
 Permissions = new[] { "geolocation" },
 ```
 
@@ -4041,7 +4041,7 @@ playwright install
 - run: npx playwright install               # ❌ fehlt System-Abhängigkeiten
 ```
 
-Alternativ: Offizielles Docker-Image nutzen (`mcr.microsoft.com/playwright:v1.52.0-jammy`) – enthält alles vorinstalliert.
+Alternativ: Offizielles Docker-Image nutzen (`mcr.microsoft.com/playwright:v1.59.1-noble`) – enthält alles vorinstalliert.
 
 ---
 
