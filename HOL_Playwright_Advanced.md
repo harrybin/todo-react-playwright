@@ -4167,34 +4167,37 @@ npm run dev
 dotnet test --settings playwright.runsettings
 ```
 
-**Lösung B – `[AssemblyInitialize]` als `webServer`-Äquivalent:**
+**Lösung B – `[ClassInitialize]` als `webServer`-Äquivalent (pro Testklasse):**
 
-Du kannst die App automatisch vor allen Tests starten und nach Abschluss beenden, indem du einen MSTest-`[AssemblyInitialize]`-Hook verwendest:
+Du kannst die App automatisch vor den Tests einer Klasse starten und danach beenden, indem du MSTest-`[ClassInitialize]`/`[ClassCleanup]`-Hooks verwendest. Der Wrapper prüft beim Start, ob auf Port 3000 bereits ein Prozess läuft, und beendet ihn zuerst – so gibt es keine Konflikte, wenn ein vorangegangener Testlauf den Server nicht sauber beendet hat:
 
 ```csharp
-// AppSetup.cs – startet die App einmalig für die gesamte Test-Assembly
+// AppWebServer.cs – pro Testklasse einmalig starten/stoppen
 [TestClass]
-public static class AppSetup
+public class AppWebServer
 {
-    private static Process? _appProcess;
+    protected static Process? AppProcess;
 
-    [AssemblyInitialize]
+    [ClassInitialize]
     public static async Task StartApp(TestContext _)
     {
+        // Bereits laufenden Server auf Port 3000 beenden
+        await KillProcessOnPortAsync(3000);
+
         // npm run build → statisches Build erzeugen
         var build = Process.Start(new ProcessStartInfo("npm", "run build")
         {
             WorkingDirectory = Path.GetFullPath("../../../../todo-react-playwright"),
-            UseShellExecute = false,
+            UseShellExecute  = false,
         })!;
         await build.WaitForExitAsync();
 
-        // npx serve dist → einfacher HTTP-Server auf Port 3000
-        _appProcess = Process.Start(new ProcessStartInfo(
-            "npx", "serve dist -p 3000 --no-clipboard")
+        // npm run preview → Vite-Preview-Server auf Port 3000
+        // (erfordert "preview": "vite preview --port 3000" in package.json)
+        AppProcess = Process.Start(new ProcessStartInfo("npm", "run preview")
         {
             WorkingDirectory = Path.GetFullPath("../../../../todo-react-playwright"),
-            UseShellExecute = false,
+            UseShellExecute  = false,
             RedirectStandardOutput = true,
         })!;
 
@@ -4208,13 +4211,59 @@ public static class AppSetup
         throw new InvalidOperationException("App did not start within 15 s");
     }
 
-    [AssemblyCleanup]
-    public static void StopApp() => _appProcess?.Kill(entireProcessTree: true);
+    [ClassCleanup]
+    public static void StopApp() => AppProcess?.Kill(entireProcessTree: true);
+
+    // Hilfsmethode: beendet alle Prozesse, die Port 3000 belegen
+    private static async Task KillProcessOnPortAsync(int port)
+    {
+        // lsof -ti :<port> gibt PIDs aus, die den Port belegen (Linux/macOS)
+        var lsof = Process.Start(new ProcessStartInfo("lsof", $"-ti :{port}")
+        {
+            UseShellExecute        = false,
+            RedirectStandardOutput = true,
+        });
+        if (lsof is null) return;
+        var output = await lsof.StandardOutput.ReadToEndAsync();
+        await lsof.WaitForExitAsync();
+
+        foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (int.TryParse(line.Trim(), out var pid))
+            {
+                try { Process.GetProcessById(pid).Kill(entireProcessTree: true); }
+                catch { /* Prozess bereits beendet */ }
+            }
+        }
+        await Task.Delay(300); // kurz warten, bis Port freigegeben ist
+    }
 }
 ```
 
-> **Hinweis:** Für `vite preview` (schneller, kein eigenes Serve-Tool nötig) ersetze den `npx serve`-Aufruf durch `npm run preview` (erfordert einen `"preview": "vite preview --port 3000"` Eintrag in `package.json`).
-> NUnit- und xUnit-Äquivalente: `[OneTimeSetUp]` in einer `[SetUpFixture]`-Klasse (NUnit) bzw. ein `IAsyncLifetime`-`ICollectionFixture` (xUnit).
+Testklassen erben dann von `AppWebServer`, um den Server automatisch zu erhalten:
+
+```csharp
+[TestClass]
+public class TodoTests : AppWebServer
+{
+    [TestMethod]
+    [TestCategory("CICD")]
+    public async Task AddTask_ShowsInList()
+    {
+        // Page ist bereits von PageTest bereitgestellt
+        await Page.GotoAsync("http://localhost:3000");
+        // ... Test-Logik
+    }
+}
+```
+
+> **Hinweis Windows:** Auf Windows steht `lsof` nicht zur Verfügung. Ersetze `KillProcessOnPortAsync` dort durch:
+> ```csharp
+> var netstat = Process.Start(new ProcessStartInfo("cmd", $"/c netstat -ano | findstr :{port}")
+>     { UseShellExecute = false, RedirectStandardOutput = true })!;
+> ```
+> und parse die letzte Spalte (PID) entsprechend.
+> NUnit- und xUnit-Äquivalente: `[OneTimeSetUp]`/`[OneTimeTearDown]` in der Basisklasse (NUnit) bzw. ein `IAsyncLifetime`-`IClassFixture` (xUnit).
 
 ---
 
