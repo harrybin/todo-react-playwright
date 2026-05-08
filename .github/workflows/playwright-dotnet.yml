@@ -1,0 +1,86 @@
+name: Playwright Tests (.NET / MSTest)
+# Exercise 12: CI/CD – GitHub Actions für C#-Playwright-Tests
+# Trigger: Push auf main und alle Pull Requests gegen main
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Minimale Berechtigungen – Tests brauchen nur Lesezugriff auf den Code
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Repository auschecken
+      - uses: actions/checkout@v4
+
+      # 2. .NET 10 SDK installieren
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      # 3. Node.js für die React-App benötigt (mit npm-Cache)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'      # 4. React-App bauen und als statischen Server starten (im Hintergrund)
+      #    `serve` hostet den dist-Ordner als statischen Webserver auf Port 3000.
+      #    Wichtig: Microsoft.Playwright.MSTest hat keinen webServer-Mechanismus →
+      #    App muss vor den Tests manuell gestartet werden.
+      - name: Build and start Todo App
+        run: |
+          npm ci
+          npm run build
+          npm install -g serve
+          serve dist -p 3000 &
+          # Kurze Wartezeit, damit der Server bereit ist
+          sleep 3
+
+      # 5. .NET-Testprojekt bauen
+      - name: Build test project
+        run: dotnet build TodoPlaywrightTests/
+
+      # 6. Playwright-Browser + System-Abhängigkeiten installieren
+      #    dotnet tool: framework-unabhängig, für alle net-Versionen gleich
+      - name: Install Playwright browsers
+        run: |
+          dotnet tool install -g Microsoft.Playwright.CLI
+          playwright install --with-deps
+
+      # 7. Tests ausführen – TRX-Format für Upload-Artefakt
+      #    Nur Tests mit Kategorie CICD ausführen (ProductionReady-Tests)
+      #    continueOnError: Tests schlagen fehl → trotzdem weiter für Artefakt-Upload
+      - name: Run Playwright tests
+        run: |
+          dotnet test TodoPlaywrightTests/ \
+            --filter "TestCategory=CICD" \
+            --logger "trx;LogFileName=results.trx" \
+            --results-directory TestResults/
+        env:
+          PLAYWRIGHT_BASE_URL: "http://localhost:3000"
+        continue-on-error: true
+
+      # 8. TRX-Ergebnisse immer hochladen (auch bei Testfehlern)
+      #    → im Actions-Tab herunterladbar; wichtig für Post-mortem Analyse
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-dotnet
+          path: TestResults/
+          retention-days: 14
+
+      # 9. Playwright-Artefakte (Traces, Screenshots) nur bei Fehlern hochladen
+      #    → spart Speicherplatz bei erfolgreichen Runs
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-artifacts
+          path: |
+            **/traces/
+            **/screenshots/
+            **/*.webm
+          retention-days: 7
