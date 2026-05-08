@@ -68,7 +68,7 @@ Nach dieser HOL kannst du:
 | **PageTest** | Basisklasse für C#-Tests (`Microsoft.Playwright.MSTest.PageTest` / `NUnit.PageTest` / `Xunit.PageTest`). Stellt `Page`, `Context`, `Browser` und `Playwright` als Properties zur Verfügung. |
 | **Page Object Model (POM)** | Design-Pattern: Locatoren und Aktionen für eine Seite werden in einer eigenen Klasse gekapselt. Tests nutzen nur die Methoden der Page-Object-Klasse, keine rohen Locatoren. Verbessert Wartbarkeit und Lesbarkeit. |
 | **Headless / Headed** | *Headless*: Browser ohne sichtbares Fenster (Standard in CI). *Headed*: Browser mit sichtbarem Fenster (Standard lokal für Debugging). Umschalten: `npx playwright test --headed` / `HEADED=1 dotnet test`. |
-| **`webServer`** | Konfiguration in `playwright.config.ts`, die einen lokalen Dev-Server automatisch vor den Tests startet und danach beendet. Entspricht `npm run dev`. Für C# gibt es kein Äquivalent – App muss manuell gestartet werden. |
+| **`webServer`** | Konfiguration in `playwright.config.ts`, die einen lokalen Dev-Server automatisch vor den Tests startet und danach beendet. Entspricht `npm run dev`. Für C# gibt es kein eingebautes Äquivalent – die nächstgelegene Lösung ist ein `[AssemblyInitialize]`-Hook, der die App per Prozess startet (siehe Troubleshooting). |
 | **Sharding** | Aufteilung der Test-Suite auf mehrere parallele Prozesse oder Maschinen. TypeScript: `--shard=1/4`. Azure Playwright Testing Service ermöglicht bis zu 50 parallele Shard-Container. |
 | **`reuseExistingServer`** | In `playwright.config.ts webServer`: Bei `true` wird kein neuer Server gestartet, wenn Port 3000 bereits belegt ist. In CI sollte dieser Wert `false` sein (`!process.env.CI`), damit kein veralteter Server genutzt wird. |
 | **MCP Server** | *Model Context Protocol Server* – ermöglicht KI-Assistenten (GitHub Copilot, Claude), Playwright-Browser-Tools per natürlicher Sprache zu steuern. Ergänzt den manuellen Testansatz für Exploration und Entwurf. |
@@ -2089,6 +2089,56 @@ foreach (var device in Playwright.Devices.Keys)
     Console.WriteLine(device);
 ```
 
+**Bonus – Mehrere Geräte mit `[DataTestMethod]` + `[DataRow]` testen:**
+
+Anstatt ein Gerät hardzukodieren, kannst du das gleiche `[DataRow]`-Pattern wie in Exercise 9 (Cross-Browser) verwenden und verschiedene Gerätekombinationen als Parameter übergeben:
+
+```csharp
+[TestClass]
+public class MultiDeviceMobileTests : TestBase
+{
+    [DataTestMethod]
+    [DataRow("iPhone 15 Pro",    "portrait")]
+    [DataRow("iPhone 15 Pro",    "landscape")]
+    [DataRow("iPad Pro 11",      "landscape")]
+    [DataRow("Pixel 7",          "portrait")]
+    [DataRow("Galaxy S9+",       "portrait")]
+    public async Task AppWorksOnDevice(string deviceName, string orientation)
+    {
+        var device = Playwright.Devices[deviceName];
+
+        // Landscape: Breite und Höhe tauschen
+        var viewport = orientation == "landscape"
+            ? new ViewportSize { Width = device.ViewportSize!.Height, Height = device.ViewportSize.Width }
+            : device.ViewportSize;
+
+        var ctx = await Browser.NewContextAsync(new BrowserNewContextOptions(device)
+        {
+            BaseURL     = base.ContextOptions().BaseURL,
+            Geolocation = base.ContextOptions().Geolocation,
+            Permissions = base.ContextOptions().Permissions,
+            ViewportSize = viewport,
+        });
+        var page = await ctx.NewPageAsync();
+
+        await page.GotoAsync("/");
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "TodoMatic" }))
+            .ToBeVisibleAsync();
+
+        await page.ScreenshotAsync(new PageScreenshotOptions
+        {
+            Path     = $"screenshots/{deviceName.Replace(" ", "_")}_{orientation}.png",
+            FullPage = true,
+        });
+
+        Console.WriteLine($"✅ {deviceName} ({orientation}): OK");
+        await ctx.CloseAsync();
+    }
+}
+```
+
+> **Tipp:** `[DataTestMethod]` ist der MSTest-Attributname für parametrisierte Tests (NUnit: `[TestCase]`, xUnit: `[Theory]`+`[InlineData]`). Jede `[DataRow]`-Kombination wird als eigenständiger Testeintrag im Testergebnis-Report gelistet und kann einzeln gefiltert werden (`dotnet test --filter "TestCategory=mobile"`).
+
 **Aus PlaywrightDemos:** Mobile-Emulation + Video-Aufnahme ist seit [WDC 2023](https://github.com/norschel/PlaywrightDemos/blob/main/PlaywrightDemos/PlaywrightE2ETests_WDC2023.cs) ein fester Bestandteil der Demos.
 
 </details>
@@ -2758,6 +2808,26 @@ jobs:
 ```
 
 > **Tipp aus PlaywrightDemos:** Nutze `[TestCategory("CICD")]` (MSTest) / `[Category("CICD")]` (NUnit) / `[Trait("Category","CICD")]` (xUnit), um nur produktionsreife Tests in CI auszuführen: `dotnet test --filter "TestCategory=CICD"`.
+>
+> **Wann sollte ein Test `[TestCategory("CICD")]` erhalten?**
+> Markiere einen Test als CI-geeignet, wenn er **alle** der folgenden Kriterien erfüllt:
+> - Keine echten Netzwerkaufrufe zu externen Diensten (alle HTTP-Requests werden per `page.RouteAsync` gemockt oder die App läuft lokal)
+> - Keine Abhängigkeit von lokalen Dateipfaden oder Umgebungsvariablen, die nur auf dem Entwickler-Rechner existieren
+> - Deterministisches Ergebnis: Der Test liefert auf einem frischen CI-Runner dasselbe Ergebnis wie lokal
+> - Keine manuellen Voraussetzungen (kein `page.pause()`, keine manuellen Datenbankmigrationen, kein vorkonfigurierter Browser-State)
+>
+> Tests, die echte externe APIs aufrufen, flaky Timing-Abhängigkeiten haben oder lokale Secrets benötigen, sollten **nicht** als `CICD` markiert werden – sie laufen separat in dafür vorgesehenen Integrations-Pipelines.
+>
+> ```csharp
+> // ✅ CI-geeignet: App läuft lokal, kein externer Service
+> [TestMethod]
+> [TestCategory("CICD")]
+> public async Task AddTask_ShowsInList() { /* ... */ }
+>
+> // ❌ Nicht CI-geeignet: ruft echte externe API auf
+> [TestMethod]
+> public async Task FetchWeather_ReturnsCity() { /* ... */ }
+> ```
 
 </details>
 
@@ -4086,9 +4156,9 @@ page.getByRole("listitem").filter({ hasText: "Meine Aufgabe" })
 
 **Symptom:** `net::ERR_CONNECTION_REFUSED` oder Timeout beim `GotoAsync()`
 
-**Ursache:** Im Gegensatz zu TypeScript (dort gibt es `webServer` in `playwright.config.ts`) startet C#-Tests die App nicht automatisch.
+**Ursache:** Im Gegensatz zu TypeScript (dort gibt es `webServer` in `playwright.config.ts`) startet C# die App nicht automatisch.
 
-**Lösung:** App manuell starten, bevor du Tests ausführst:
+**Lösung A – App manuell starten (einfachste Option):**
 ```bash
 # Terminal 1: App starten
 npm run dev
@@ -4096,6 +4166,55 @@ npm run dev
 # Terminal 2: Tests ausführen
 dotnet test --settings playwright.runsettings
 ```
+
+**Lösung B – `[AssemblyInitialize]` als `webServer`-Äquivalent:**
+
+Du kannst die App automatisch vor allen Tests starten und nach Abschluss beenden, indem du einen MSTest-`[AssemblyInitialize]`-Hook verwendest:
+
+```csharp
+// AppSetup.cs – startet die App einmalig für die gesamte Test-Assembly
+[TestClass]
+public static class AppSetup
+{
+    private static Process? _appProcess;
+
+    [AssemblyInitialize]
+    public static async Task StartApp(TestContext _)
+    {
+        // npm run build → statisches Build erzeugen
+        var build = Process.Start(new ProcessStartInfo("npm", "run build")
+        {
+            WorkingDirectory = Path.GetFullPath("../../../../todo-react-playwright"),
+            UseShellExecute = false,
+        })!;
+        await build.WaitForExitAsync();
+
+        // npx serve dist → einfacher HTTP-Server auf Port 3000
+        _appProcess = Process.Start(new ProcessStartInfo(
+            "npx", "serve dist -p 3000 --no-clipboard")
+        {
+            WorkingDirectory = Path.GetFullPath("../../../../todo-react-playwright"),
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+        })!;
+
+        // Warten bis Port 3000 antwortet (max. 15 Sekunden)
+        using var http = new HttpClient();
+        for (var i = 0; i < 30; i++)
+        {
+            try { await http.GetAsync("http://localhost:3000"); return; }
+            catch { await Task.Delay(500); }
+        }
+        throw new InvalidOperationException("App did not start within 15 s");
+    }
+
+    [AssemblyCleanup]
+    public static void StopApp() => _appProcess?.Kill(entireProcessTree: true);
+}
+```
+
+> **Hinweis:** Für `vite preview` (schneller, kein eigenes Serve-Tool nötig) ersetze den `npx serve`-Aufruf durch `npm run preview` (erfordert einen `"preview": "vite preview --port 3000"` Eintrag in `package.json`).
+> NUnit- und xUnit-Äquivalente: `[OneTimeSetUp]` in einer `[SetUpFixture]`-Klasse (NUnit) bzw. ein `IAsyncLifetime`-`ICollectionFixture` (xUnit).
 
 ---
 
