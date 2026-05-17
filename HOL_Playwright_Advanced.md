@@ -45,7 +45,7 @@ Nach dieser HOL kannst du:
 | Voraussetzung | TypeScript / JavaScript | C# / .NET |
 |---|---|---|
 | Laufzeitumgebung | Node.js 18+ | .NET 8 SDK+ |
-| IDE | Visual Studio Code | Visual Studio 2022 **oder** Visual Studio Code |
+| IDE | Visual Studio Code | Visual Studio 2022/2026 **oder** Visual Studio Code |
 | Grundkenntnisse | TypeScript / JS | C# |
 | Gemeinsam | Git-Grundkenntnisse, React-Grundkenntnisse (hilfreich) | |
 
@@ -91,15 +91,17 @@ Nach der Installation erscheint in der Seitenleiste das **Beaker-Symbol** (Testi
 - Den **Record new** Button nutzen (= Codegen)
 - Traces direkt öffnen
 
-### Visual Studio 2022 (C# / .NET)
+### Visual Studio 2022 / 2026 (C# / .NET)
 
 <details>
-<summary>🟣 Nur relevant für C# / .NET – Visual Studio 2022</summary>
+<summary>🟣 Nur relevant für C# / .NET – Visual Studio 2022 / 2026</summary>
 
-1. Stelle sicher, dass das **.NET 8 SDK** installiert ist
+1. Stelle sicher, dass das passende **.NET SDK** installiert ist – mindestens .NET 8; für VS 2026 empfohlen: .NET 10+
 2. Öffne den **Test Explorer** (`Test → Test Explorer`)
 3. Playwright-Tests erscheinen dort automatisch nach dem Build
 4. Für den integrierten Debugger: Breakpoints setzen → Rechtsklick im Test Explorer → **Debug**
+
+> Die Bedienoberfläche (Test Explorer, Debugger) ist in VS 2022 und VS 2026 identisch – alle folgenden Übungen funktionieren in beiden Versionen ohne Anpassung.
 
 > **Tipp:** Visual Studio bietet keinen Playwright Codegen direkt, aber du kannst ihn per PowerShell-Skript aufrufen (siehe Übung 0B).
 
@@ -3454,7 +3456,7 @@ dotnet test TodoPlaywrightTests/ --filter "TestCategory=CICD" \
 | GitHub Copilot | Abonnement aktiv, **Agent Mode** aktiviert (`Chat: Agent Mode` in VS Code Settings) |
 | Node.js | 18+ (für `npx @playwright/mcp`) |
 
-> ℹ️ **C# / Visual Studio:** Der Playwright MCP Server ist Node.js-basiert und wird in VS Code genutzt. Visual Studio 2022 hat aktuell keine direkte MCP-Integration. C#-Entwickler können den MCP Server dennoch in VS Code parallel nutzen – der generierte Test-Entwurf wird dann in C# übersetzt.
+> ℹ️ **C# / Visual Studio:** Der Playwright MCP Server ist Node.js-basiert und wird in VS Code genutzt. Visual Studio 2022 und Visual Studio 2026 haben aktuell keine direkte MCP-Integration. C#-Entwickler können den MCP Server dennoch in VS Code parallel nutzen – der generierte Test-Entwurf wird dann in C# übersetzt.
 
 #### Schritt 1: MCP Server in VS Code konfigurieren
 
