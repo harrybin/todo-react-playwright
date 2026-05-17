@@ -1217,15 +1217,56 @@ Der Trace Viewer ist ein vollständiger Zeitstrahl des Tests – mit DOM-Snapsho
 
 **Schnellstart:**
 
+<details open>
+<summary>🟦 TypeScript / JavaScript</summary>
+
+Via CLI-Flag (Umgebungsvariable):
+
 ```bash
-# TypeScript – Trace beim Testlauf aufzeichnen und anzeigen:
 npx playwright test --trace on
 npx playwright show-trace test-results/pfad-zum-test/trace.zip
+```
 
-# C# – Trace aktivieren:
+Code-orientierte Alternative – `test.use()` pro Datei oder global in `playwright.config.ts`:
+
+```typescript
+// In einer einzelnen Test-Datei (überschreibt globale Einstellung):
+test.use({ trace: "on" });             // immer
+// test.use({ trace: "on-first-retry" }); // nur beim ersten Retry
+
+// Global in playwright.config.ts:
+// use: { trace: "on-first-retry" }   // CI-Empfehlung
+```
+
+</details>
+
+<details>
+<summary>🟣 C# / .NET</summary>
+
+Via Umgebungsvariable:
+
+```bash
 PLAYWRIGHT_TRACE=on dotnet test
 # pwsh bin/Debug/<net-version>/playwright.ps1 show-trace test-results/trace.zip
 ```
+
+Code-orientierte Alternative – `[TestInitialize]`/`[TestCleanup]` in der Testklasse (kein Env-Var-Setzen nötig):
+
+```csharp
+[TestInitialize]
+public async Task StartTracing()
+    => await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+
+[TestCleanup]
+public async Task StopTracing()
+{
+    var path = $"traces/{TestContext.TestName}.zip";
+    await Context.Tracing.StopAsync(new TracingStopOptions { Path = path });
+    TestContext.AddResultFile(path); // als Anhang im VS Test Explorer sichtbar
+}
+```
+
+</details>
 
 **In VS Code:** Nach einem fehlgeschlagenen Test erscheint in der Test-Ergebnis-Ansicht ein **"Show Trace"**-Link, der den Trace direkt in VS Code öffnet.
 
@@ -1646,7 +1687,7 @@ npx playwright show-report  # Screenshots in "Attachments" sichtbar
 <details>
 <summary>💡 Lösungshinweis C# – MSTest</summary>
 
-`playwright.runsettings` (automatisch):
+`playwright.runsettings` (automatisch, konfigurationsbasiert):
 
 ```xml
 <Parameter name="playwright:screenshot" value="only-on-failure" />
@@ -1656,6 +1697,22 @@ Oder `playwright.config.json`:
 
 ```json
 { "use": { "screenshot": "only-on-failure" } }
+```
+
+**Code-orientierte Alternative – `[TestCleanup]` bei Testfehler:**
+
+```csharp
+// Kein playwright.runsettings nötig – Screenshot wird im Code gesteuert
+[TestCleanup]
+public async Task TakeScreenshotOnFailure()
+{
+    if (TestContext.CurrentTestOutcome != UnitTestOutcome.Passed)
+    {
+        var path = $"screenshots/{TestContext.TestName}-failure.png";
+        await Page.ScreenshotAsync(new PageScreenshotOptions { Path = path, FullPage = true });
+        TestContext.AddResultFile(path); // im VS Test Explorer als Anhang sichtbar
+    }
+}
 ```
 
 Manuell im Test:
@@ -1721,6 +1778,23 @@ public class ScreenshotTests : PageTest
 }
 ```
 
+**Code-orientierte Alternative – `[TearDown]` bei Testfehler (NUnit):**
+
+```csharp
+[TearDown]
+public async Task TakeScreenshotOnFailure()
+{
+    if (TestContext.CurrentContext.Result.Outcome.Status
+            == NUnit.Framework.Interfaces.TestStatus.Failed)
+    {
+        var name = TestContext.CurrentContext.Test.Name;
+        var path = $"screenshots/{name}-failure.png";
+        await Page.ScreenshotAsync(new PageScreenshotOptions { Path = path, FullPage = true });
+        TestContext.AddTestAttachment(path, "Failure Screenshot");
+    }
+}
+```
+
 **xUnit** (Ausgabe per `ITestOutputHelper`):
 
 ```csharp
@@ -1739,6 +1813,8 @@ public class ScreenshotTests : PageTest
     }
 }
 ```
+
+> **Hinweis xUnit:** xUnit bietet kein `[TearDown]`-Äquivalent mit Kenntnis des Test-Ergebnisses. Screenshot bei Fehler am besten via `try/catch` im Test oder als Basisklasse mit `IAsyncLifetime.DisposeAsync()` + `ITestResultAccessor` implementieren.
 
 </details>
 
@@ -1812,6 +1888,21 @@ Per `playwright.config.json`:
 ```json
 { "use": { "video": "retain-on-failure" } }
 ```
+
+**Code-orientierte Alternative – `ContextOptions()` in der Testklasse überschreiben:**
+
+```csharp
+// Kein Env-Var oder externe Konfigurationsdatei nötig –
+// Video-Aufnahme wird direkt im Code für diese Testklasse aktiviert.
+public override BrowserNewContextOptions ContextOptions() =>
+    new(base.ContextOptions())
+    {
+        RecordVideoDir = "videos/",
+        RecordVideoSize = new RecordVideoSize { Width = 1280, Height = 720 },
+    };
+```
+
+> Die `.webm`-Dateien landen im angegebenen Verzeichnis. Um nur bei Fehlern zu behalten, kombiniere `ContextOptions()` mit einem `[TestCleanup]`, der die Datei bei bestandenem Test löscht.
 
 Videos werden in `test-results/` abgelegt. Pfad im Test ausgeben:
 
@@ -1915,6 +2006,47 @@ public class TraceTests : TestBase
 pwsh bin/Debug/<net-version>/playwright.ps1 show-trace traces/add-task-trace.zip
 ```
 
+**Code-orientierte Alternative – automatisches Tracing für alle Tests einer Klasse via `[TestInitialize]`/`[TestCleanup]` (kein Env-Var nötig):**
+
+```csharp
+// Basisklasse: einmal definieren, beliebig viele Testklassen erben davon
+[TestClass]
+public abstract class TracingTestBase : TestBase
+{
+    [TestInitialize]
+    public async Task StartTracing()
+        => await Context.Tracing.StartAsync(new TracingStartOptions
+        {
+            Screenshots = true,
+            Snapshots = true,
+            Sources = true,
+        });
+
+    [TestCleanup]
+    public async Task StopTracing()
+    {
+        var path = $"traces/{TestContext.TestName}.zip";
+        await Context.Tracing.StopAsync(new TracingStopOptions { Path = path });
+        TestContext.AddResultFile(path);
+    }
+}
+
+// Testklasse erbt automatisches Tracing – kein PLAYWRIGHT_TRACE nötig
+[TestClass]
+public class TraceAutoTests : TracingTestBase
+{
+    [TestMethod]
+    public async Task AddTask()
+    {
+        await Page.GotoAsync("/");
+        await Page.Locator("#new-todo-input").FillAsync("Auto-Trace Task");
+        await Page.Locator("#myUniqueID").ClickAsync();
+        await Expect(Page.GetByRole(AriaRole.List).GetByText("Auto-Trace Task")).ToBeVisibleAsync();
+        // Trace wird automatisch in [TestCleanup] gespeichert
+    }
+}
+```
+
 **NUnit:**
 
 ```csharp
@@ -1929,6 +2061,27 @@ public class TraceTests : PageTest
         // ... Testschritte ...
         await Context.Tracing.StopAsync(new() { Path = "traces/trace.zip" });
         TestContext.AddTestAttachment("traces/trace.zip", "Playwright Trace");
+    }
+}
+```
+
+**Code-orientierte Alternative – automatisches Tracing via `[SetUp]`/`[TearDown]` (NUnit):**
+
+```csharp
+[TestFixture]
+public class TraceAutoTests : PageTest
+{
+    [SetUp]
+    public async Task StartTracing()
+        => await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+
+    [TearDown]
+    public async Task StopTracing()
+    {
+        var name = TestContext.CurrentContext.Test.Name;
+        var path = $"traces/{name}.zip";
+        await Context.Tracing.StopAsync(new TracingStopOptions { Path = path });
+        TestContext.AddTestAttachment(path, "Playwright Trace");
     }
 }
 ```
