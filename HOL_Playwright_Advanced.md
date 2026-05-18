@@ -204,7 +204,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
-  retries: process.env.CI ? 2 : 0,
+  // retries: process.env.CI ? 2 : 0,
   reporter: [["html"], ["list"]],
   use: {
     baseURL: "http://localhost:3000",
@@ -221,7 +221,7 @@ export default defineConfig({
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    // reuseExistingServer: !process.env.CI,
   },
 });
 ```
@@ -470,6 +470,8 @@ Du schreibst den Test direkt, basierend auf dem Wissen über die App-Struktur un
 
 ```typescript
 // ✅ Code-Driven: Bewusste Locator-Wahl
+import { test, expect } from "@playwright/test";
+
 test("smoke test – code-driven", async ({ page }) => {
   await page.goto("/");
   // Semantisch robust: ARIA-Rolle, nicht CSS-Klasse
@@ -494,6 +496,8 @@ pwsh bin/Debug/<net-version>/playwright.ps1 codegen http://localhost:3000
 
 # VS Code: Testing-Seitenleiste → "Record new"-Button
 ```
+
+Erstelle `tests/smoke.spec.ts`
 
 Typische Codegen-Ausgabe für denselben Test:
 
