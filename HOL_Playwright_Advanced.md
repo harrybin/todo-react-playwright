@@ -298,7 +298,9 @@ playwright install
 
 ```csharp
 // MSTest
+using Microsoft.Playwright;
 using Microsoft.Playwright.MSTest;
+
 [TestClass]
 public class TestBase : PageTest
 {
