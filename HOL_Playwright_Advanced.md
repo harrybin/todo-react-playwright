@@ -104,7 +104,7 @@ Nach dieser HOL kannst du:
 | Laufzeitumgebung | Node.js 18+ | .NET 8 SDK+ |
 | IDE | Visual Studio Code | Visual Studio 2022/2026 **oder** Visual Studio Code |
 | Grundkenntnisse | TypeScript / JS | C# |
-| Gemeinsam | Git-Grundkenntnisse, React-Grundkenntnisse (hilfreich) | |
+| Gemeinsam | GIT-Client, Git-Grundkenntnisse, React-Grundkenntnisse (hilfreich) | |
 
 ---
 
