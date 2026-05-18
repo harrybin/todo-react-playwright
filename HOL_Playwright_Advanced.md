@@ -104,6 +104,7 @@ Nach dieser HOL kannst du:
 | Laufzeitumgebung | Node.js 18+ | .NET 8 SDK+ |
 | IDE | Visual Studio Code | Visual Studio 2022/2026 **oder** Visual Studio Code |
 | Grundkenntnisse | TypeScript / JS | C# |
+| VersionControl (alle)| GIT | |
 | Gemeinsam | Git-Grundkenntnisse, React-Grundkenntnisse (hilfreich) | |
 
 ---
@@ -261,10 +262,8 @@ dotnet new mstest -n TodoPlaywrightTests && cd TodoPlaywrightTests
 dotnet add package Microsoft.Playwright.MSTest
 dotnet build
 # Playwright-Browser installieren (framework-unabhängig, empfohlen):
-dotnet tool install --global Microsoft.Playwright.CLI
-playwright install
 # Alternativ direkt über das generierte Skript (Pfad = Ziel-Framework, z. B. net8.0 bis net10.0):
-# pwsh bin/Debug/<net-version>/playwright.ps1 install
+pwsh bin/Debug/<net-version>/playwright.ps1 install
 ```
 
 **NUnit einrichten:**
@@ -273,9 +272,7 @@ playwright install
 dotnet new nunit -n TodoPlaywrightTests && cd TodoPlaywrightTests
 dotnet add package Microsoft.Playwright.NUnit
 dotnet build
-dotnet tool install --global Microsoft.Playwright.CLI
-playwright install
-# pwsh bin/Debug/<net-version>/playwright.ps1 install
+pwsh bin/Debug/<net-version>/playwright.ps1 install
 ```
 
 **xUnit einrichten:**
@@ -284,9 +281,7 @@ playwright install
 dotnet new xunit -n TodoPlaywrightTests && cd TodoPlaywrightTests
 dotnet add package Microsoft.Playwright.Xunit
 dotnet build
-dotnet tool install --global Microsoft.Playwright.CLI
-playwright install
-# pwsh bin/Debug/<net-version>/playwright.ps1 install
+pwsh bin/Debug/<net-version>/playwright.ps1 install
 ```
 
 > ℹ️ **`<net-version>`** ist das Ziel-Framework deines Projekts, z. B. `net8.0`, `net9.0` oder `net10.0` (Minimum: **.NET 8**). Den genauen Wert findest du in der `.csproj`-Datei (`<TargetFramework>`). Die framework-unabhängige `dotnet tool`-Variante ist einfacher und für alle Versionen gleich.
@@ -297,7 +292,9 @@ playwright install
 
 ```csharp
 // MSTest
+using Microsoft.Playwright;
 using Microsoft.Playwright.MSTest;
+
 [TestClass]
 public class TestBase : PageTest
 {
@@ -584,6 +581,8 @@ npx playwright test smoke.spec.ts
 Erstelle `SmokeTests.cs`:
 
 ```csharp
+using System.Text.RegularExpressions;
+using Microsoft.Playwright;
 using Microsoft.Playwright.MSTest;
 
 [TestClass]
@@ -622,6 +621,8 @@ dotnet test --filter "AppLoadsCorrectly"
 
 ```csharp
 using Microsoft.Playwright.NUnit;
+using System.Text.RegularExpressions;
+using Microsoft.Playwright;
 
 [TestFixture]
 public class SmokeTests : PageTest
@@ -650,6 +651,8 @@ dotnet test --filter "AppLoadsCorrectly"
 <summary>💡 Lösungshinweis C# – xUnit</summary>
 
 ```csharp
+using System.Text.RegularExpressions;
+using Microsoft.Playwright;
 using Microsoft.Playwright.Xunit;
 
 public class SmokeTests : PageTest
