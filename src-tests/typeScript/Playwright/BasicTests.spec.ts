@@ -1,4 +1,4 @@
-import { chromium, Browser, Page, test, expect } from "@playwright/test";
+import { chromium, test, expect, type Browser, type Page } from "@playwright/test";
 
 test.describe("TodoMatic Tests", () => {
   let browser: Browser;
