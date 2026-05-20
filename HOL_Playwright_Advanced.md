@@ -739,6 +739,10 @@ test("add a new task", async ({ page }) => {
 > ℹ️ **Globale Konfiguration:** Die `TestBase`-Klasse setzt `Geolocation` und `Permissions` bereits. Alle Testklassen, die `TestBase` statt `PageTest` erweitern, erben diese Konfiguration – kein `ContextOptions()`-Override nötig.
 
 ```csharp
+using System.Text.RegularExpressions;
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
+
 // TestBase erbt bereits Geolocation + BaseURL – kein Override nötig
 [TestClass]
 public class AddTaskTests : TestBase
@@ -849,6 +853,9 @@ test("delete a task", async ({ page }) => {
 <summary>💡 Lösungshinweis C#</summary>
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
+
 // TestBase erbt Geolocation + BaseURL – kein ContextOptions()-Override nötig
 [TestClass]
 public class TaskManagementTests : TestBase
@@ -911,6 +918,8 @@ Schränkt einen breiten Locator auf Elemente ein, die bestimmten Text enthalten.
 <summary>💡 Lösungshinweis TypeScript</summary>
 
 ```typescript
+import { test, expect } from "@playwright/test";
+
 test("add task and delete it – check count", async ({ page }) => {
   await page.goto("/");
 
@@ -980,24 +989,31 @@ public async Task AddAndDeleteTask_CheckCount()
 <summary>💡 Lösungshinweis C# – NUnit</summary>
 
 ```csharp
-[Test]
-public async Task AddAndDeleteTask_CheckCount()
+using Microsoft.Playwright;
+using Microsoft.Playwright.NUnit;
+
+[TestFixture]
+public class TaskCountTests : PageTest
 {
-    await Page.GotoAsync("http://localhost:3000");
+    [Test]
+    public async Task AddAndDeleteTask_CheckCount()
+    {
+        await Page.GotoAsync("http://localhost:3000");
 
-    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+        await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
 
-    await Page.Locator("#new-todo-input").FillAsync("Smoke Bonus Task");
-    await Page.Locator("#myUniqueID").ClickAsync();
+        await Page.Locator("#new-todo-input").FillAsync("Smoke Bonus Task");
+        await Page.Locator("#myUniqueID").ClickAsync();
 
-    var newItem = Page.GetByRole(AriaRole.Listitem).Filter(new() { HasText = "Smoke Bonus Task" });
-    await Expect(newItem).ToBeVisibleAsync();
-    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("2 tasks remaining");
+        var newItem = Page.GetByRole(AriaRole.Listitem).Filter(new() { HasText = "Smoke Bonus Task" });
+        await Expect(newItem).ToBeVisibleAsync();
+        await Expect(Page.Locator("#list-heading")).ToContainTextAsync("2 tasks remaining");
 
-    await newItem.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+        await newItem.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
 
-    await Expect(newItem).Not.ToBeVisibleAsync();
-    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+        await Expect(newItem).Not.ToBeVisibleAsync();
+        await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+    }
 }
 ```
 
@@ -1007,24 +1023,33 @@ public async Task AddAndDeleteTask_CheckCount()
 <summary>💡 Lösungshinweis C# – xUnit</summary>
 
 ```csharp
-[Fact]
-public async Task AddAndDeleteTask_CheckCount()
+using Microsoft.Playwright;
+using Microsoft.Playwright.Xunit;
+using Xunit.Abstractions;
+
+public class TaskCountTests : PageTest
 {
-    await Page.GotoAsync("http://localhost:3000");
+    public TaskCountTests(ITestOutputHelper output) : base(output) { }
 
-    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+    [Fact]
+    public async Task AddAndDeleteTask_CheckCount()
+    {
+        await Page.GotoAsync("http://localhost:3000");
 
-    await Page.Locator("#new-todo-input").FillAsync("Smoke Bonus Task");
-    await Page.Locator("#myUniqueID").ClickAsync();
+        await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
 
-    var newItem = Page.GetByRole(AriaRole.Listitem).Filter(new() { HasText = "Smoke Bonus Task" });
-    await Expect(newItem).ToBeVisibleAsync();
-    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("2 tasks remaining");
+        await Page.Locator("#new-todo-input").FillAsync("Smoke Bonus Task");
+        await Page.Locator("#myUniqueID").ClickAsync();
 
-    await newItem.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+        var newItem = Page.GetByRole(AriaRole.Listitem).Filter(new() { HasText = "Smoke Bonus Task" });
+        await Expect(newItem).ToBeVisibleAsync();
+        await Expect(Page.Locator("#list-heading")).ToContainTextAsync("2 tasks remaining");
 
-    await Expect(newItem).Not.ToBeVisibleAsync();
-    await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+        await newItem.GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+
+        await Expect(newItem).Not.ToBeVisibleAsync();
+        await Expect(Page.Locator("#list-heading")).ToContainTextAsync("1 task remaining");
+    }
 }
 ```
 
@@ -1106,6 +1131,9 @@ test("filter buttons work correctly", async ({ page }) => {
 <summary>💡 Lösungshinweis C#</summary>
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
+
 // TestBase erbt Geolocation + BaseURL – kein ContextOptions()-Override nötig
 [TestClass]
 public class FilterTests : TestBase
@@ -1431,6 +1459,10 @@ test("load remote tasks - slow network", async ({ page }) => {
 <summary>💡 Lösungshinweis C#</summary>
 
 ```csharp
+using System.Text.Json;
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
+
 [TestClass]
 public class NetworkMockTests : PageTest
 {
@@ -1570,6 +1602,9 @@ test("replace logo body after real fetch", async ({ page }) => {
 <summary>💡 Lösungshinweis C#</summary>
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
+
 [TestClass]
 public class ImageMockTests : PageTest
 {
@@ -1709,7 +1744,7 @@ Oder `playwright.config.json`:
 **Code-orientierte Alternative – `[TestCleanup]` bei Testfehler:**
 
 ```csharp
-// Kein playwright.runsettings nötig – Screenshot wird im Code gesteuert
+// In einer MSTest-Testklasse, die von TestBase erbt (kein separater using-Block nötig):
 [TestCleanup]
 public async Task TakeScreenshotOnFailure()
 {
@@ -1725,30 +1760,37 @@ public async Task TakeScreenshotOnFailure()
 Manuell im Test:
 
 ```csharp
-[TestMethod]
-public async Task ScreenshotAfterAddingTask()
-{
-    await Page.GotoAsync("http://localhost:3000");
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
 
-    // Full-Page-Screenshot
-    await Page.ScreenshotAsync(new PageScreenshotOptions
+[TestClass]
+public class ScreenshotTests : TestBase
+{
+    [TestMethod]
+    public async Task ScreenshotAfterAddingTask()
     {
-        Path = "screenshots/initial-state.png",
-        FullPage = true,
-    });
+        await Page.GotoAsync("http://localhost:3000");
 
-    await Page.Locator("#new-todo-input").FillAsync("Screenshot Task");
-    await Page.ScreenshotAsync(new PageScreenshotOptions
-        { Path = "screenshots/after-typing.png" });
-}
+        // Full-Page-Screenshot
+        await Page.ScreenshotAsync(new PageScreenshotOptions
+        {
+            Path = "screenshots/initial-state.png",
+            FullPage = true,
+        });
 
-[TestMethod]
-public async Task ScreenshotOfSingleElement()
-{
-    await Page.GotoAsync("http://localhost:3000");
-    // Nur die Filter-Schaltflächen
-    await Page.GetByTestId("testID-All").ScreenshotAsync(new LocatorScreenshotOptions
-        { Path = "screenshots/filter-button.png" });
+        await Page.Locator("#new-todo-input").FillAsync("Screenshot Task");
+        await Page.ScreenshotAsync(new PageScreenshotOptions
+            { Path = "screenshots/after-typing.png" });
+    }
+
+    [TestMethod]
+    public async Task ScreenshotOfSingleElement()
+    {
+        await Page.GotoAsync("http://localhost:3000");
+        // Nur die Filter-Schaltflächen
+        await Page.GetByTestId("testID-All").ScreenshotAsync(new LocatorScreenshotOptions
+            { Path = "screenshots/filter-button.png" });
+    }
 }
 ```
 
@@ -1770,6 +1812,9 @@ TestContext.AddTestAttachment("screenshots/initial-state.png", "Initial State");
 **NUnit:**
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.NUnit;
+
 [TestFixture]
 public class ScreenshotTests : PageTest
 {
@@ -1805,10 +1850,14 @@ public async Task TakeScreenshotOnFailure()
 **xUnit** (Ausgabe per `ITestOutputHelper`):
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.Xunit;
+using Xunit.Abstractions;
+
 public class ScreenshotTests : PageTest
 {
     private readonly ITestOutputHelper _output;
-    public ScreenshotTests(ITestOutputHelper output) => _output = output;
+    public ScreenshotTests(ITestOutputHelper output) : base(output) => _output = output;
 
     [Fact]
     public async Task TakeScreenshot()
@@ -1899,14 +1948,22 @@ Per `playwright.config.json`:
 **Code-orientierte Alternative – `ContextOptions()` in der Testklasse überschreiben:**
 
 ```csharp
-// Kein Env-Var oder externe Konfigurationsdatei nötig –
-// Video-Aufnahme wird direkt im Code für diese Testklasse aktiviert.
-public override BrowserNewContextOptions ContextOptions() =>
-    new(base.ContextOptions())
-    {
-        RecordVideoDir = "videos/",
-        RecordVideoSize = new RecordVideoSize { Width = 1280, Height = 720 },
-    };
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
+
+// Testklasse erbt TestBase und überschreibt nur die Video-Einstellung
+[TestClass]
+public class VideoTests : TestBase
+{
+    // Kein Env-Var oder externe Konfigurationsdatei nötig –
+    // Video-Aufnahme wird direkt im Code für diese Testklasse aktiviert.
+    public override BrowserNewContextOptions ContextOptions() =>
+        new(base.ContextOptions())
+        {
+            RecordVideoDir = "videos/",
+            RecordVideoSize = new RecordVideoSize { Width = 1280, Height = 720 },
+        };
+}
 ```
 
 > Die `.webm`-Dateien landen im angegebenen Verzeichnis. Um nur bei Fehlern zu behalten, kombiniere `ContextOptions()` mit einem `[TestCleanup]`, der die Datei bei bestandenem Test löscht.
@@ -1980,6 +2037,9 @@ use: { trace: "on-first-retry" }  // nur beim Retry – CI-Empfehlung
 <summary>💡 Lösungshinweis C# – MSTest</summary>
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
+
 // TestBase erbt Geolocation + BaseURL – kein ContextOptions()-Override nötig
 [TestClass]
 public class TraceTests : TestBase
@@ -2016,6 +2076,7 @@ pwsh bin/Debug/<net-version>/playwright.ps1 show-trace traces/add-task-trace.zip
 **Code-orientierte Alternative – automatisches Tracing für alle Tests einer Klasse via `[TestInitialize]`/`[TestCleanup]` (kein Env-Var nötig):**
 
 ```csharp
+// Usings sind bereits durch den obigen TraceTests-Block vorhanden (gleiche Datei/Klasse).
 // Basisklasse: einmal definieren, beliebig viele Testklassen erben davon
 [TestClass]
 public abstract class TracingTestBase : TestBase
@@ -2057,6 +2118,9 @@ public class TraceAutoTests : TracingTestBase
 **NUnit:**
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.NUnit;
+
 [TestFixture]
 public class TraceTests : PageTest
 {
@@ -2075,6 +2139,7 @@ public class TraceTests : PageTest
 **Code-orientierte Alternative – automatisches Tracing via `[SetUp]`/`[TearDown]` (NUnit):**
 
 ```csharp
+// Usings sind bereits durch den obigen TraceTests-Block vorhanden (gleiche Datei/Klasse).
 [TestFixture]
 public class TraceAutoTests : PageTest
 {
@@ -2096,10 +2161,14 @@ public class TraceAutoTests : PageTest
 **xUnit:**
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.Xunit;
+using Xunit.Abstractions;
+
 public class TraceTests : PageTest
 {
     private readonly ITestOutputHelper _output;
-    public TraceTests(ITestOutputHelper output) => _output = output;
+    public TraceTests(ITestOutputHelper output) : base(output) => _output = output;
 
     [Fact]
     public async Task ManualTrace()
@@ -2182,6 +2251,9 @@ npx playwright show-report
 <summary>💡 Lösungshinweis C#</summary>
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
+
 // TestBase erbt Geolocation + BaseURL
 [TestClass]
 public class VisualRegressionTests : TestBase
@@ -2262,6 +2334,9 @@ console.log(Object.keys(devices));
 <summary>💡 Lösungshinweis C#</summary>
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
+
 // TestBase setzt BaseURL + Geolocation; wir überschreiben nur für das Geräteprofil
 [TestClass]
 public class MobileTests : TestBase
@@ -2313,6 +2388,7 @@ foreach (var device in Playwright.Devices.Keys)
 Anstatt ein Gerät hardzukodieren, kannst du das gleiche `[DataRow]`-Pattern wie in Exercise 9 (Cross-Browser) verwenden und verschiedene Gerätekombinationen als Parameter übergeben:
 
 ```csharp
+// Usings sind bereits durch den obigen MobileTests-Block vorhanden (gleiche Datei/Klasse).
 [TestClass]
 public class MultiDeviceMobileTests : TestBase
 {
@@ -2400,6 +2476,8 @@ npx playwright test --project=webkit
 
 Browser-Name im Test:
 ```typescript
+import { test, expect } from "@playwright/test";
+
 test("check browser", async ({ page, browserName }) => {
   console.log(`Läuft auf: ${browserName}`);
   await page.goto("/");
@@ -2413,6 +2491,9 @@ test("check browser", async ({ page, browserName }) => {
 <summary>💡 Lösungshinweis C#</summary>
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 // Parametrisierter Cross-Browser-Test – wie in PlaywrightDemos
 [TestClass]
 public class CrossBrowserTests
@@ -2566,6 +2647,9 @@ test("canvas overlay (PlaywrightDemos-inspired)", async ({ page }) => {
 <summary>💡 Lösungshinweis C#</summary>
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
+
 [TestClass]
 public class EvaluateTests : PageTest
 {
@@ -2776,6 +2860,7 @@ test("full task lifecycle – lesbarer dank POM", async ({ page }) => {
 `Pages/TodoPage.cs` – wird von MSTest, NUnit und xUnit gleich verwendet:
 
 ```csharp
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 
 public class TodoPage
@@ -2848,6 +2933,9 @@ public class TodoPage
 Tests (MSTest – NUnit/xUnit analog):
 
 ```csharp
+using Microsoft.Playwright;
+using Microsoft.Playwright.MSTest;
+
 // TestBase erbt Geolocation + BaseURL – kein ContextOptions()-Override nötig
 [TestClass]
 public class PomTests : TestBase
@@ -3568,6 +3656,7 @@ public class PlaywrightServiceSetup : PlaywrightServiceNUnitSetup { }
 
 ```csharp
 using Azure.Developer.MicrosoftPlaywrightTesting.NUnit;
+using Microsoft.Playwright;
 using System.Text.RegularExpressions;
 
 // PlaywrightServiceTest ersetzt die normale PlaywrightTest-Basisklasse
@@ -4391,6 +4480,9 @@ dotnet test --settings playwright.runsettings
 Du kannst die App automatisch vor den Tests einer Klasse starten und danach beenden, indem du MSTest-`[ClassInitialize]`/`[ClassCleanup]`-Hooks verwendest. Der Wrapper prüft beim Start, ob auf Port 3000 bereits ein Prozess läuft, und beendet ihn zuerst – so gibt es keine Konflikte, wenn ein vorangegangener Testlauf den Server nicht sauber beendet hat:
 
 ```csharp
+using System.Diagnostics;
+using Microsoft.Playwright.MSTest;
+
 // AppWebServer.cs – pro Testklasse einmalig starten/stoppen
 [TestClass]
 public class AppWebServer
@@ -4462,6 +4554,8 @@ public class AppWebServer
 Testklassen erben dann von `AppWebServer`, um den Server automatisch zu erhalten:
 
 ```csharp
+// Usings sind bereits durch den obigen AppWebServer-Block vorhanden (gleiche Datei).
+// TodoTests erbt den Server-Lifecycle – Page kommt über die PageTest-Basisklasse.
 [TestClass]
 public class TodoTests : AppWebServer
 {
