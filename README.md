@@ -1,36 +1,55 @@
-# todo-react
+# todo-react-playwright
 
-Sample todo app built with the React/ReactDOM framework. For the accompanying documentation, see
-[Understanding client-side JavaScript frameworks
-: React tutorials](https://wiki.developer.mozilla.org/en-US/docs/Learn/Tools_and_testing/Client-side_JavaScript_frameworks#React_tutorials).
+A sample Todo app built with [React 19](https://react.dev/) and [TypeScript](https://www.typescriptlang.org/), powered by [Vite](https://vitejs.dev/) and styled with [MUI (Material UI)](https://mui.com/). End-to-end tests are written with [Playwright](https://playwright.dev/).
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Features
+
+- Add, edit, delete, and complete todo tasks
+- Filter tasks by **All**, **Active**, or **Completed**
+- Each task stores the creation time and geolocation (latitude/longitude)
+- Load tasks from a remote JSON endpoint
+- Deploy to GitHub Pages via `npm run deploy`
+
+## Tech Stack
+
+| Area       | Technology                     |
+|------------|--------------------------------|
+| Framework  | React 19, TypeScript           |
+| Build tool | Vite 6                         |
+| UI library | MUI (Material UI) 7            |
+| Testing    | Playwright                     |
+| Linting    | ESLint 9                       |
+| ID gen     | nanoid                         |
 
 ## Getting started
 
-To get this app running locally, you'll need to have [Node.js](https://nodejs.org/en/) installed on your machine.
-In the project directory, you can run:
+Requires [Node.js](https://nodejs.org/en/) (LTS recommended).
 
 ```bash
-npm i && npm run dev
+npm install
+npm run dev
 ```
 
-More information about the available commands can be found in the [Contributing](CONTRIBUTING.md) guide.
+The app opens automatically at [http://localhost:3000](http://localhost:3000).
+
+## Available scripts
+
+| Script             | Description                                      |
+|--------------------|--------------------------------------------------|
+| `npm run dev`      | Start the Vite dev server on port 3000           |
+| `npm run build`    | Build the app for production into `dist/`        |
+| `npm run preview`  | Locally preview the production build             |
+| `npm run lint`     | Run ESLint (zero warnings policy)                |
+| `npm test`         | Run Playwright end-to-end tests                  |
+| `npm run test:ui`  | Run Playwright tests in interactive UI mode      |
+| `npm run deploy`   | Build and deploy to GitHub Pages                 |
 
 ## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-The following sections are recommended:
-
-- [Code Splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-- [Analyzing the Bundle Size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-- [Making a Progressive Web App](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-- [Advanced Configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-- [Deployment](https://facebook.github.io/create-react-app/docs/deployment)
-- [npm run build fails to minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+- [Vite documentation](https://vitejs.dev/guide/)
+- [React documentation](https://react.dev/)
+- [MUI documentation](https://mui.com/material-ui/getting-started/)
+- [Playwright documentation](https://playwright.dev/docs/intro)
 
 ## Contributing
 
